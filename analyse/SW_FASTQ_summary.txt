@@ -1,0 +1,28 @@
+
+Summary analysis of FASTQ files found in /home/data/projecticum/SW/raw_data directory.
+Script used: FASTQ_summarizer.sh.
+Input directory used: /home/data/projecticum/SW/raw_data
+Script execution: Thu Mar  7 00:48:23 CET 2024
+
+
+#===Report=======#
+
+Total number of FASTQ files used as input:
+288
+
+Total number of reads:
+3483265
+
+Total combined read length:
+937861148
+
+Shortest read length:
+35
+
+Longest read length:
+56245
+
+Average read length:
+269
+
+#===Fin==========#
