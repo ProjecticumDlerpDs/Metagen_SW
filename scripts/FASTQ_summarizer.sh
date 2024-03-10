@@ -11,6 +11,8 @@ export LC_ALL=C
 print_usage() {
   printf "\nDescription of FASTQ_summarizer.sh: 
   
+  This script is used for insightful summary of selected FASTQ files.
+  
   Usage: 
   -I input directory with fastq.gz files
   -O output directory (created through script)
@@ -29,7 +31,7 @@ while getopts I:O:h flag; do
     h) print_usage
        exit 1             ;;
     *) echo -e "\nPlease provide valid options (-I and -O are required)."
-       echo "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
+       echo -e "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
        exit 1             ;;
   esac
 done
@@ -39,7 +41,7 @@ done
 
 if [ -z "$indir" ] || [ -z "$outdir" ]; then
   echo -e "\nPlease provide valid options (-I and -O are required)."
-  echo "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
+  echo -e "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
   exit 1
 fi
 
