@@ -1,28 +1,28 @@
 
-Summary analysis of FASTQ files found in /home/data/projecticum/SW/raw_data directory.
+Summary analysis of FASTQ files found in /home/1790915/Metagen_SW/raw_data/ directory.
 Script used: FASTQ_summarizer.sh.
-Input directory used: /home/data/projecticum/SW/raw_data
-Script execution: Thu Mar  7 00:48:23 CET 2024
+Input directory used: /home/1790915/Metagen_SW/raw_data/
+Script execution: Mon Mar 11 13:43:12 CET 2024
 
 
 #===Report=======#
 
 Total number of FASTQ files used as input:
-288
+1
 
 Total number of reads:
-3483265
+11378
 
 Total combined read length:
-937861148
+2967550
 
 Shortest read length:
-35
+76
 
 Longest read length:
-56245
+18830
 
 Average read length:
-269
+260
 
 #===Fin==========#
