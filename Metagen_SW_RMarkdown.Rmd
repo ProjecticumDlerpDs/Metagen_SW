@@ -1,0 +1,305 @@
+---
+title: "Analysis pipeline for Nanopore MinION long read sequencing data"
+author: "Moreno Serafino"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+# Introduction
+
+
+
+## [contents]
+
+
+## Library setup:
+
+```{r}
+
+# load libraries:
+# ...
+
+```
+
+
+## Environment setup:
+
+```{bash, echo=TRUE, eval=FALSE}
+
+# Update conda; echo "y" to automatically answer prompt:
+
+echo "y" | conda update -n base conda
+
+# activate conda meta environment:
+
+conda activate meta
+
+```
+
+
+# Raw sequencing data overview
+
+To create a summary report of the raw data for general purpose, run the FASTQ_summarizer.sh script. The "longest read length" result can provide insight in the type of sequencing data (long read vs. short read). Note that this RMarkdown file is for long read data analysis only.
+
+cmd usage:  
+bash FASTQ_summarizer.sh  
+-I /home/data/projecticum/SW/raw_data  
+-O ~/Metagen_SW/analyse  
+
+```{bash, echo=TRUE, eval=FALSE}
+
+#!/bin/bash
+
+
+## step 0: set locale to avoid awk warning
+
+export LC_ALL=C
+
+
+## step 1: script description and usage:
+
+print_usage() {
+  printf "\nDescription of FASTQ_summarizer.sh: 
+  
+  This script is used for insightful summary of selected FASTQ files.
+  
+  Usage: 
+  -I input directory with fastq.gz files
+  -O output directory (created through script)
+  -h for help
+
+  Example cmd line:
+	bash FASTQ_summarizer.sh -I path/to/FASTQ/data -O new/ouput/directory\n\n"
+}
+
+## step 2: flag definition:
+
+while getopts I:O:h flag; do
+  case "${flag}" in
+    I) indir="${OPTARG}"  ;;
+    O) outdir="${OPTARG}" ;;
+    h) print_usage
+       exit 1             ;;
+    *) echo -e "\nPlease provide valid options (-I and -O are required)."
+       echo -e "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
+       exit 1             ;;
+  esac
+done
+
+
+## step 3.1: check whether flags have been provided by the user:
+
+if [ -z "$indir" ] || [ -z "$outdir" ]; then
+  echo -e "\nPlease provide valid options (-I and -O are required)."
+  echo -e "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
+  exit 1
+fi
+
+
+## step 3.2: check whether directory -I exists and contains data:
+
+if [ ! -d "$indir" ]; then
+  echo -e "\nThe provided input directory does not exist."
+  echo "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
+  exit 1
+fi
+
+
+## step 3.3: check whether directory -O exists, create if necessary:
+
+if [ ! -d "$outdir" ]; then
+  echo -e "\nCreating output directory: $outdir"
+  mkdir -p "$outdir"
+    exit 1
+fi
+
+
+## step 4: empty variables:
+
+total_files=0
+total_length=0
+read_lengths=()
+sorted_lengths=()
+
+
+## step 5: analysis:
+
+echo -e "\nAnalizing ..."
+
+for file in "$indir"/*.fastq.gz; do
+  current_read_length=$(awk 'NR%4==2 {sum+=length}END{print sum}' "$file")
+  total_files=$((total_files + 1))
+  total_length=$((total_length + current_read_length))
+  read_lengths+=("$current_read_length")
+done
+
+shortest_read=$(
+  { for file in "$indir"/*.fastq.gz; do
+      gunzip -c "$file" | awk 'NR%4==2 {print length, $0}'
+    done | sort -n | head -n1 | cut -d ' ' -f 2- | wc -c
+  } 2>/dev/null
+)
+
+longest_read=$(
+  { for file in "$indir"/*.fastq.gz; do
+      gunzip -c "$file" | awk 'NR%4==2 {print length, $0}'
+    done | sort -n | tail -n1 | cut -d ' ' -f 2- | wc -c
+  } 2>/dev/null
+)
+
+## step 6: calculations:
+
+echo -e "\nCalculating ..."
+
+total_reads=0
+for file in "$indir"/*fastq.gz; do
+  lines=$(wc -l < "$file")
+  total_reads=$((total_reads + lines /4))
+done
+average_length=$(($total_length / $total_reads))
+
+
+## step 7: presentation:
+
+outfile="SW_FASTQ_summary.txt"
+
+{
+echo -e "\nSummary analysis of FASTQ files found in $indir directory." 
+echo "Script used: FASTQ_summarizer.sh."
+echo "Input directory used: $indir"
+echo "Script execution: $(date)"
+echo -e "\n\n#===Report=======#\n\nTotal number of FASTQ files used as input:" 
+echo "$total_files"
+echo -e "\nTotal number of reads:"
+echo "$total_reads"
+echo -e "\nTotal combined read length:"
+echo "$total_length"
+echo -e "\nShortest read length:"
+echo "$shortest_read"
+echo -e "\nLongest read length:"
+echo "$longest_read"
+echo -e "\nAverage read length:"
+echo "$average_length"
+echo -e "\n#===Fin==========#"
+} > "$outdir/$outfile"
+
+echo -e "\nSummary report added to: $outdir/$outfile.\n"
+
+```
+
+```{bash, engine.opts='-i', echo=TRUE, eval=TRUE}
+
+# Show summary:
+
+cat ~/Metagen_SW/analyse/analyse_misc/SW_FASTQ_summary.txt
+
+```
+
+
+## FASTQ analysis with NanoPlot
+
+To generate one NanoPlot summary for the entire FASTQ dataset, first concatenate all FASTQ files into one combined file.
+
+```{bash, echo=TRUE, eval=FALSE}
+
+cat /home/data/projecticum/SW/raw_data/*.fastq.gz > ~/Metagen_SW/raw_data/merged.fastq.gz
+
+```
+
+
+Then use the FASTQ_NanoPlotter.sh script to create a complete summary report.
+
+cmd usage:  
+bash FASTQ_NanoPlotter.sh  
+-I ~/Metagen_SW/raw_data  
+-O ~/Metagen_SW/analyse  
+
+
+```{bash, echo=TRUE, eval=FALSE}
+
+#!/bin/bash
+
+# step 1: script description and usage:
+
+print_usage () {
+  printf "\nDescription of FASTQ_NanoPlotter.sh: 
+  
+  This script is used to create NanoPlots of FASTQ files. 
+  These plots serve as quality control.
+  Designed for long read data only!
+  
+  Usage: 
+  -I input directory with fastq.gz files
+  -O output directory (created through script)
+  -h for help
+
+  Example cmd line:
+	bash FASTQ_NanoPlotter.sh -I path/to/FASTQ/data -O new/ouput/directory\n\n"
+}
+
+
+## step 2: flag definition:
+
+while getopts I:O:h flag; do
+  case "${flag}" in
+    I) indir="${OPTARG}"  ;;
+    O) outdir="${OPTARG}" ;;
+    h) print_usage
+       exit 1             ;;
+    *) echo -e "\nPlease provide valid options (-I and -O are required)."
+       echo -e "Use cmd \"bash FASTQ_NanoPlotter.sh -h\" for instructions.\n"
+       exit 1             ;;
+  esac
+done
+
+
+## step 3: check whether directory -O exists, create if necessary:
+
+if [ ! -d "$outdir" ]; then
+  echo -e "\nCreating output directory: $outdir\n"
+  mkdir -p "$outdir"
+fi
+
+
+## step 4: NanoPlotting:
+
+for FASTQ in "$indir"/*.fastq.gz; do
+  file_name=$(basename "${FASTQ%.fastq.gz}")
+  echo "Processing file: $FASTQ"
+  NanoPlot --fastq_rich $FASTQ -o "$outdir/$file_name"
+  
+  #   xdg-open "$outdir/$file_name/NanoPlot-report.html" 
+  #-- dit zou beter (algemener) zijn dan volgende line, maar werkt niet. 
+  
+  xdg-open https://daur.rstudio.hu.nl/s/c310e7760b90faf49cb24/files/Metagen_SW/analyse/merged_test_10/NanoPlot-report.html 
+  #-- dit werkt wel.
+
+## step 5: folder cleanup:
+
+echo -e "\nRemoving unnecessary files ..."
+find "$outdir" -type f ! -name "NanoPlot-report.html" -exec rm {} +
+echo -e "\nNanoPlot created and folder cleaned up."
+done
+
+echo -e "\nOpening NanoPlot summary in browser.\n"
+
+```
+
+With this script, a NanoPlot summary document is created as an html file and opened automatically in the browser.
+
+The NanoPlot function has calculated many aspects of the raw FASTQ data. Since the script specified the input as "fastq_rich", the report even generates plots concerning metadata such as the activity of each nanopore channel. The most important information in this document however is in the summary table:
+
+- Mean read length should show that the input data is indeed produced from long read sequencing, since Nanopore is a long read NGS technique (as opposed to 100-150 bp illumina short read sequencing). This is important for downstream analysis.
+- Mean read quality takes the average basecall Phred quality score over each read, and then gives the average score of all reads.
+- \>Qx shows the proportion of reads with Phred quality score > x. In the SW_Metagen project case, >Q7 shows 100% of all reads, and >Q10 shows <100%. This suggests a preselection of raw data with a minimum Phred quality score cutoff somewhere between 7 and 10.
+
