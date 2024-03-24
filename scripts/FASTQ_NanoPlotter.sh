@@ -47,13 +47,20 @@ fi
 for FASTQ in "$indir"/*.fastq.gz; do
   file_name=$(basename "${FASTQ%.fastq.gz}")
   echo "Processing file: $FASTQ"
-  NanoPlot --fastq $FASTQ -o "$outdir/$file_name"
-
+  NanoPlot --fastq_rich $FASTQ -o "$outdir/$file_name"
+  
+  #   xdg-open "$outdir/$file_name/NanoPlot-report.html" 
+  #-- dit zou beter (algemener) zijn dan volgende line, maar werkt niet. 
+  
+  xdg-open https://daur.rstudio.hu.nl/s/c310e7760b90faf49cb24/files/Metagen_SW/analyse/merged_test_10/NanoPlot-report.html 
+  #-- dit werkt wel.
 
 ## step 5: folder cleanup:
 
 echo -e "\nRemoving unnecessary files ..."
 find "$outdir" -type f ! -name "NanoPlot-report.html" -exec rm {} +
-echo -e "\nNanoPlot created and folder cleaned up.\n"
-  
+echo -e "\nNanoPlot created and folder cleaned up."
 done
+
+echo -e "\nOpening NanoPlot summary in browser.\n"
+

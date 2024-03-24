@@ -107,7 +107,7 @@ for file in "$indir"/*fastq.gz; do
   total_reads=$((total_reads + lines /4))
 done
 average_length=$(($total_length / $total_reads))
-
+total_length_Mb=$(($total_length / 1000000))
 
 ## step 7: presentation:
 
@@ -123,7 +123,7 @@ echo "$total_files"
 echo -e "\nTotal number of reads:"
 echo "$total_reads"
 echo -e "\nTotal combined read length:"
-echo "$total_length"
+echo "$total_length ($total_length_Mb Mb)"
 echo -e "\nShortest read length:"
 echo "$shortest_read"
 echo -e "\nLongest read length:"
