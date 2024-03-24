@@ -62,30 +62,3 @@ Raw data was obtained from ditch water, and provided in FASTQ format. Files are 
 #   Part 2: Sequence alignment
 =============================
 
------------------------------
-##  Part 2.1: FASTQ to SAM
------------------------------
-
-
-
-
------------------------------
-##  Part 2.2: MAPQ-score evaluation
------------------------------
-
-
-
-
------------------------------
-##  Part 2.3: MAPQ-score filtering
------------------------------
-
-
-
-
------------------------------
-##  Part 2.4: BED to BigWig
------------------------------
-
-
-
