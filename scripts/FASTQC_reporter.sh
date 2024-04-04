@@ -4,7 +4,7 @@
 
 ## stap 1: beschrijf de functie en gebruikswijze van het script.
 ## stap 2: definieer de invoeropties.
-## stap 3: voer de FastQC analyse uit d.m.v. <fastqc> command.
+## stap 3: voer de FastQC analyse uit d.m.v. fastqc command.
 
 
 ### code ###
