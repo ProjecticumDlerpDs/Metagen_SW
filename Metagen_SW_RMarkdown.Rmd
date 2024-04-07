@@ -303,3 +303,11 @@ The NanoPlot function has calculated many aspects of the raw FASTQ data. Since t
 - Mean read quality takes the average basecall Phred quality score over each read, and then gives the average score of all reads.
 - \>Qx shows the proportion of reads with Phred quality score > x. In the SW_Metagen project case, >Q7 shows 100% of all reads, and >Q10 shows <100%. This suggests a preselection of raw data with a minimum Phred quality score cutoff somewhere between 7 and 10.
 
+```{bash, echo=TRUE, eval=FALSE}
+
+#-- HIER KOMT EEN SCRIPT. SCRIPT MAKEN VOOR KRAKEN2.
+#-- command in de trend van: kraken2 --db /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ --threads 2 --gzip-compressed --output ~/Metagen_SW/analyse/Kraken2_test_10/test_10.kraken --report ~/Metagen_SW/analyse/Kraken2_test_10/test_10.report --use-names ~/Metagen_SW/raw_data/merged_test_10.fastq.gz
+
+```
+
+
