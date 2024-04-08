@@ -25,8 +25,9 @@ print_usage() {
 
   Example cmd line:
 	bash FASTQC_reporter.sh 
-	-i path/to/FASTQ/*.fastq.gz 
-	-O new/ouput/directory (can be created through script)\n\n"
+	-i path to FASTQ (.fastq.gz) 
+	-O ouput directory (can be created through script)
+	-x number (inclusive) of bases that will be trimmed from the start of each read\n\n"
 }
 
 
@@ -39,7 +40,7 @@ while getopts ":i:O:x:h" flag; do
     x)  cutoff=$OPTARG ;;
     h)  print_usage      
         exit 1         ;;
-    *)  echo -e "\nPlease provide valid options (-i and -O are required)."
+    *)  echo -e "\nPlease provide valid options (-i, -O and -x are required).\nUse cmd \"bash FASTQ_trimmer.sh -h\" for instructions.\n"
         exit 1         ;;
   esac
 done
