@@ -1,5 +1,6 @@
 ---
-title: "Analysis pipeline for Nanopore MinION long read sequencing data"
+title: "Metagenomic data analysis pipeline"
+subtitle: "Voor het verwerken en analyseren van Oxford Nanopore Technologies’ MinION long-read, single-end shotgun sequencing data"
 author: "Moreno Serafino"
 date: "`r Sys.Date()`"
 output:
@@ -17,10 +18,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
+[blabla]
 
+## Contents
 
-## [contents]
-
+[inhoudsopgave]
 
 ## Library setup:
 
@@ -204,6 +206,69 @@ echo -e "\nSummary report added to: $outdir/$outfile.\n"
 cat ~/Metagen_SW/analyse/analyse_misc/SW_FASTQ_summary.txt
 
 ```
+
+## FastQC report
+
+The FastQC tool will be used to get a quick qualitative overview using the Phred-scores in the dataset. The following script will take the concatenated fastq.gz file, analyze the data and create an html report. The report consists of a number of graphs, the first and most important will be the per base quality score. These boxplots represent the quality values of the entire input per basecall 'location' in the reads, i.e. the quality scores of the first base of each read combined is represented by the first box. Results of this analysis can later be used to trim reads in order to obtain a subset with higher average quality.
+
+```{bash, echo=TRUE, eval=FALSE}
+#!/bin/bash
+
+### pseudocode ###
+
+## stap 1: beschrijf de functie en gebruikswijze van het script.
+## stap 2: definieer de invoeropties.
+## stap 3: voer de FastQC analyse uit d.m.v. fastqc command.
+
+
+### code ###
+
+## step 1: script description and usage:
+
+print_usage() {
+  printf "\nDescription of FastQC_reporter.sh: 
+  
+  This script can be used to create FastQC reports for fastq.gz files.
+  
+  Usage: 
+  -I input directory with fastq.gz files
+  -O output directory (created through script)
+  -h for help
+
+  Example cmd line:
+	bash FASTQC_reporter.sh 
+	-I path/to/FASTQ/data 
+	-O new/ouput/directory (can be created through script)\n\n"
+}
+
+
+## step 2: flag definition:
+
+while getopts I:O:h flag; do
+  case "${flag}" in
+    I) indir="${OPTARG}"  ;;
+    O) outdir="${OPTARG}" ;;
+    h) print_usage
+       exit 1             ;;
+    *) echo -e "\nPlease provide valid options (-I and -O are required)."
+       echo -e "Use cmd \"bash FASTQC_reporter.sh -h\" for instructions.\n"
+       exit 1             ;;
+  esac
+done
+
+
+## step 3: FastQC analysis report:
+
+for file in "$indir"/*.fastq.gz
+do
+    echo "Running FastQC on $file..."
+    fastqc "$file" -o "$indir"
+done
+
+echo "FastQC analysis complete. Please check $outdir."
+
+```
+
 
 
 ## FASTQ analysis with NanoPlot
