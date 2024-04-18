@@ -1,41 +1,42 @@
 # README_Metagen_SW
 
-# DLERPDS metagenomics slootwaterproject
-# Moreno Serafino
+# DLERPDS Metagenomics data analysis pipeline
+# By Moreno Serafino
 
 
 =============================
 #   Part 0: Introduction
 =============================
 
-This is the README file for DLERPDS metagenomics slootwaterproject, by Moreno Serafino. In this document, the complete pipeline from raw FASTQ data to visualised NGS data is explained, together with the scripts used.
+This is the README file for the DLERPDS metagenomics data analysis pipeline project, by Moreno Serafino. In this document, the complete pipeline from raw FASTQ data to visualised NGS data is explained. For a more detailed description of script usage, see Metagen_SW_RMarkdown.Rmd on this GitHub page.
 
 
 -----------------------------
 ##  Part 0.1: Workstation
 -----------------------------
 
-Conda working environment:
-meta
-
 Working directory:
-~/Metagen_SW unless otherwise stated.
+/home/1790915/Metagen_SW (~/Metagen_SW) unless otherwise stated.
+
+Conda environment:
+'meta'
 
 
 -----------------------------
 ##  Part 0.2: Packages
 -----------------------------
 
-The scripts used in this pipeline require the following conda packages:
+The 'meta' conda environment is created to which all necessary packages are installed:
 
-  sra-tools
-  bowtie2
-  samtools
-  bamtools
-  bedtools
-  wigtobigwig
-  homer
-  fastqc
+  bowtie2   conda install bioconda::bowtie2
+  bracken   conda install bioconda::bracken
+  cutadapt  conda install bioconda::cutadapt
+  fastqc    conda install bioconda::fastqc
+  kraken2   conda install bioconda::kraken2
+  nanoplot  conda install bioconda::nanoplot
+  [[WIP]]
+
+All packages must be installed in order to utilize the complete analysis pipeline.
 
 
 =============================
@@ -46,9 +47,11 @@ The scripts used in this pipeline require the following conda packages:
 ##  Part 1.1: Data origin
 -----------------------------
 
-Raw data was obtained from ditch water, and provided in FASTQ format. Files are located in server directory:
-
+Raw data was obtained from ditch water and provided in FASTQ format. Files are located in server directory:
 /home/data/projecticum/SW/raw_data/
+
+The data was generated using Oxford Nanopore Technologies' MinION device, through DNA sequencing (version 9.4.1). 
+A total of 288 FASTQ-files have been generated over two ditchwater sequencing runs.
 
 
 -----------------------------
