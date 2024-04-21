@@ -1,5 +1,16 @@
 #!/bin/bash
 
+### pseudocode ###
+
+## step 1: describe script function and usage.
+## step 2: define input options.
+## step 3: check input and output.
+## step 4: create empty variables.
+## step 5: execute summary analysis.
+## step 6: print results to output.
+
+
+### code ###
 
 ## step 0: set locale to avoid awk warning
 
@@ -11,16 +22,17 @@ export LC_ALL=C
 print_usage() {
   printf "\nDescription of FASTQ_summarizer.sh: 
   
-  This script is used for insightful summary of selected FASTQ files.
+  This script can be used to create a quick summary of FASTQ files.
   
   Usage: 
   -I input directory with fastq.gz files
-  -O output directory (created through script)
+  -O output directory (created through script if necessary)
   -h for help
 
   Example cmd line:
 	bash FASTQ_summarizer.sh -I path/to/FASTQ/data -O new/ouput/directory\n\n"
 }
+
 
 ## step 2: flag definition:
 
@@ -64,7 +76,7 @@ if [ ! -d "$outdir" ]; then
 fi
 
 
-## step 4: empty variables:
+## step 4: create empty variables:
 
 total_files=0
 total_length=0
@@ -72,7 +84,7 @@ read_lengths=()
 sorted_lengths=()
 
 
-## step 5: analysis:
+## step 5.1: analysis:
 
 echo -e "\nAnalizing ..."
 
@@ -86,7 +98,8 @@ done
 shortest_read=$(for file in "$indir"/*.fastq.gz; do zcat "$file" | awk 'NR%4==2 {if(min=="" || length<min){min=length}} END{print min}'; done | sort -n | head -n1)
 longest_read=$(for file in "$indir"/*.fastq.gz; do zcat "$file" | awk 'NR%4==2 {if(max=="" || length>max){max=length}} END{print max}'; done | sort -n | tail -n1)
 
-## step 6: calculations:
+
+## step 5.2: calculations:
 
 echo -e "\nCalculating ..."
 
@@ -98,7 +111,8 @@ done
 average_length=$(($total_length / $total_reads))
 total_length_Mb=$(($total_length / 1000000))
 
-## step 7: presentation:
+
+## step 6: presentation:
 
 outfile="FASTQ_summary.txt"
 

@@ -2,9 +2,12 @@
 
 ### pseudocode ###
 
-## stap 1: beschrijf de functie en gebruikswijze van het script.
-## stap 2: definieer de invoeropties.
-## stap 3: voer de FastQC analyse uit d.m.v. fastqc command.
+## step 1: describe script function and usage.
+## step 2: define input options.
+## step 3: check input and output.
+## step 4: execute FastQC analysis through fastqc command.
+## step 5: cleanup.
+## step 6: [bugged] open FastQC report.
 
 
 ### code ###
@@ -43,13 +46,50 @@ while getopts I:O:h flag; do
 done
 
 
-## step 3: FastQC analysis report:
+## step 3.1: check whether flags have been provided by the user:
+
+if [ -z "$indir" ] || [ -z "$outdir" ]; then
+  echo -e "\nPlease provide valid options (-I and -O are required)."
+  echo -e "Use cmd \"bash FASTQC_reporter.sh -h\" for instructions.\n"
+  exit 1
+fi
+
+
+## step 3.2: check whether directory -I exists and contains data:
+
+if [ ! -d "$indir" ]; then
+  echo -e "\nThe provided input directory does not exist."
+  echo "Use cmd \"bash FASTQC_reporter.sh -h\" for instructions.\n"
+  exit 1
+fi
+
+
+## step 3.3: check whether directory -O exists, create if necessary:
+
+if [ ! -d "$outdir" ]; then
+  echo -e "\nCreating output directory: $outdir\n\n"
+  mkdir -p "$outdir"
+fi
+
+
+## step 4: FastQC analysis report:
 
 for file in "$indir"/*.fastq.gz
 do
-    echo "Running FastQC on $file..."
-    fastqc "$file" -o "$indir"
+    echo -e "Running FastQC on $file...\n"
+    fastqc "$file" -o "$outdir"
 done
 
-echo "FastQC analysis complete. Please check $outdir."
+echo -e "\nFastQC analysis complete. Please check $outdir.\n\n"
 
+
+# step 5: cleanup output folder:
+
+if [ -n "$(find "$outdir" -maxdepth 1 -type f -name '*fastqc.zip')" ]; then
+    rm "$outdir"/*fastqc.zip
+fi
+
+
+# step 6: open FastQC report:
+
+# [bugged] xdg-open "$outdir"/$infile*.html

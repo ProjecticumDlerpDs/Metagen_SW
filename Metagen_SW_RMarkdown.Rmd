@@ -14,7 +14,10 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 
 ```
+<br><br>
 
+--------------------------------------------------
+--------------------------------------------------
 
 # Introduction
 
@@ -58,8 +61,8 @@ conda activate meta
 
 # install all packages necessary for downstream scripts and commands:
 
-echo "y" | conda install [...]
-echo "y" | conda install [...]
+echo "y" | conda install fastqc
+echo "y" | conda install Porechop
 echo "y" | conda install [...]
 
 ```
@@ -86,8 +89,10 @@ The working directory with all the necessary files can be found here: home/17909
 
 ### About scripts
 
-The next section contains the first bash script. These scripts can simply be run from the terminal. However, most scripts need to know where to find their input data, and where to store their output file(s), among other variables. The scripts are designed so that the user may provide these variables as options. Use **bash [script_name.sh] -h** to print an overview of a script's function and usage. This works for all bash scripts down the line.<br><br><br><br>
+The next section contains the first bash script. These scripts can simply be run from the terminal. However, most scripts need to know where to find their input data, and where to store their output file(s), among other variables. The scripts are designed so that the user may provide these variables as options. Use **bash [script_name.sh] -h** to print an overview of a script's function and usage. This works for all bash scripts down the line.<br><br><br>
 
+--------------------------------------------------
+--------------------------------------------------
 
 # Raw sequencing data overview
 
@@ -151,11 +156,11 @@ If your data does not provide clear metadata, a quick summary report can be crea
 
 ```{bash, echo=TRUE, eval=FALSE}
 
-# print the script's function and usage:
+# print the script's function and usage (optional):
 
 bash FASTQ_summarizer.sh -h
 
-# execute the script with proper options:
+# execute the script with proper flags:
 
 bash FASTQ_summarizer.sh -I raw_data -O analyse/analyse_misc
 
@@ -167,176 +172,75 @@ bash FASTQ_summarizer.sh -I raw_data -O analyse/analyse_misc
 
 cat analyse/analyse_misc/FASTQ_summary.txt
 
-```
-
-The "longest read length" result provides insight in the type of sequencing data: if this result is 300 basecalls or less, it would be a strong indication that the raw data originates from Illumina short-read sequencing instead of long-read sequencing.<br><br><br><br>
-
-## FastQC report
-
-The FastQC tool will be used to get a quick qualitative overview using the Phred-scores in the dataset. The following script will take the concatenated fastq.gz file, analyze the data and create an html report. The report consists of a number of graphs, the first and most important will be the per base quality score. These boxplots represent the quality values of the entire input per basecall 'location' in the reads, i.e. the quality scores of the first base of each read combined is represented by the first box. Results of this analysis can later be used to trim reads in order to obtain a subset with higher average quality.
-
-```{bash, echo=TRUE, eval=FALSE}
-#!/bin/bash
-
-### pseudocode ###
-
-## stap 1: beschrijf de functie en gebruikswijze van het script.
-## stap 2: definieer de invoeropties.
-## stap 3: voer de FastQC analyse uit d.m.v. fastqc command.
-
-
-### code ###
-
-## step 1: script description and usage:
-
-print_usage() {
-  printf "\nDescription of FastQC_reporter.sh: 
-  
-  This script can be used to create FastQC reports for fastq.gz files.
-  
-  Usage: 
-  -I input directory with fastq.gz files
-  -O output directory (created through script)
-  -h for help
-
-  Example cmd line:
-	bash FASTQC_reporter.sh 
-	-I path/to/FASTQ/data 
-	-O new/ouput/directory (can be created through script)\n\n"
-}
-
-
-## step 2: flag definition:
-
-while getopts I:O:h flag; do
-  case "${flag}" in
-    I) indir="${OPTARG}"  ;;
-    O) outdir="${OPTARG}" ;;
-    h) print_usage
-       exit 1             ;;
-    *) echo -e "\nPlease provide valid options (-I and -O are required)."
-       echo -e "Use cmd \"bash FASTQC_reporter.sh -h\" for instructions.\n"
-       exit 1             ;;
-  esac
-done
-
-
-## step 3: FastQC analysis report:
-
-for file in "$indir"/*.fastq.gz
-do
-    echo "Running FastQC on $file..."
-    fastqc "$file" -o "$indir"
-done
-
-echo "FastQC analysis complete. Please check $outdir."
+# the report looks like this:
 
 ```
 
+The "longest read length" result provides insight in the type of sequencing data: if this result is 300 basecalls or less, it would be a strong indication that the raw data originates from Illumina short-read sequencing instead of long-read sequencing.<br><br><br>
 
+--------------------------------------------------
+--------------------------------------------------
 
-## FASTQ analysis with NanoPlot
+# Initial quality control
 
-To generate one NanoPlot summary for the entire FASTQ dataset, first concatenate all FASTQ files into one combined file.
+### FastQC on raw data subset
+
+The FastQC tool will be used to get a quick qualitative overview using the basecall-linked Phred-scores in the dataset. The *FASTQC_reporter.sh* script takes FASTQ data, analyzes the quality scores and creates an html report. The report consists of a number of graphs that will be discussed further. 
 
 ```{bash, echo=TRUE, eval=FALSE}
 
-cat /home/data/projecticum/SW/raw_data/*.fastq.gz > ~/Metagen_SW/raw_data/merged.fastq.gz
+# print the script's function and usage (optional):
+
+bash FASTQC_reporter.sh -h
+
+# execute the script with proper flags:
+
+bash FASTQC_reporter.sh -I raw_data -O analyse/FastQC
 
 ```
 
+Open the html report by navigating to the output directory with **cd ~/Metagen_SW/analyse/FastQC**, then click on the .html file and choose 'View in Web Browser'. The "Basic Statistics" section of the FastQC report shows an overview of the metadata. This should correspond with the *FASTQ_summarizer.sh* results from earlier.
 
-Then use the FASTQ_NanoPlotter.sh script to create a complete summary report.
+![Figure 1: FastQC report on combined_10.fastq.gz](misc/FastQC_combined_10.PNG)
 
-cmd usage:  
-bash FASTQ_NanoPlotter.sh  
--I ~/Metagen_SW/raw_data  
--O ~/Metagen_SW/analyse  
+<br>The boxplots in the "Per base sequence quality" graph represent the quality values of the entire input per basecall 'location' in the reads, i.e. the quality scores of the first base of each read combined are represented by the first box. Results of this analysis can be used down the line to trim reads in order to obtain a subset of higher average quality.
 
+Note: FastQC is originally designed for analyzing Illumina or Sanger short read sequencing data. The "Encoding" measurement under "Basic Statistics" should confirm this. Phred scores from short read sequencing are expected to be much higher than those of Nanopore long reads. Phred scores for Nanopore MinION R9.4.1 experiments should preferably be > 8. The color-coding in the "Per base sequence quality" graph should therefore not be taken into account.
+<br>
+
+### Porechop adapter trimming
+
+ONT uses certain adapters to assist with sequencing experiments. The 'Porechop' tool is developed to find and excise many of these adapter sequences in fastq files. the Porechop tool can be used as follows:
 
 ```{bash, echo=TRUE, eval=FALSE}
 
-#!/bin/bash
+# print the porechop description (optional):
 
-# step 1: script description and usage:
+porechop -h
 
-print_usage () {
-  printf "\nDescription of FASTQ_NanoPlotter.sh: 
-  
-  This script is used to create NanoPlots of FASTQ files. 
-  These plots serve as quality control.
-  Designed for long read data only!
-  
-  Usage: 
-  -I input directory with fastq.gz files
-  -O output directory (created through script)
-  -h for help
+# execute porechop with proper flags; note that porechop takes files instead of directories as in- and output:
 
-  Example cmd line:
-	bash FASTQ_NanoPlotter.sh -I path/to/FASTQ/data -O new/ouput/directory\n\n"
-}
-
-
-## step 2: flag definition:
-
-while getopts I:O:h flag; do
-  case "${flag}" in
-    I) indir="${OPTARG}"  ;;
-    O) outdir="${OPTARG}" ;;
-    h) print_usage
-       exit 1             ;;
-    *) echo -e "\nPlease provide valid options (-I and -O are required)."
-       echo -e "Use cmd \"bash FASTQ_NanoPlotter.sh -h\" for instructions.\n"
-       exit 1             ;;
-  esac
-done
-
-
-## step 3: check whether directory -O exists, create if necessary:
-
-if [ ! -d "$outdir" ]; then
-  echo -e "\nCreating output directory: $outdir\n"
-  mkdir -p "$outdir"
-fi
-
-
-## step 4: NanoPlotting:
-
-for FASTQ in "$indir"/*.fastq.gz; do
-  file_name=$(basename "${FASTQ%.fastq.gz}")
-  echo "Processing file: $FASTQ"
-  NanoPlot --fastq_rich $FASTQ -o "$outdir/$file_name"
-  
-  #   xdg-open "$outdir/$file_name/NanoPlot-report.html" 
-  #-- dit zou beter (algemener) zijn dan volgende line, maar werkt niet. 
-  
-  xdg-open https://daur.rstudio.hu.nl/s/c310e7760b90faf49cb24/files/Metagen_SW/analyse/merged_test_10/NanoPlot-report.html 
-  #-- dit werkt wel.
-
-## step 5: folder cleanup:
-
-echo -e "\nRemoving unnecessary files ..."
-find "$outdir" -type f ! -name "NanoPlot-report.html" -exec rm {} +
-echo -e "\nNanoPlot created and folder cleaned up."
-done
-
-echo -e "\nOpening NanoPlot summary in browser.\n"
+porechop -i raw_data/combined_10.fastq.gz -o bewerkte_data/combined_10_porechopped.fastq.gz
 
 ```
 
-With this script, a NanoPlot summary document is created as an html file and opened automatically in the browser.
-
-The NanoPlot function has calculated many aspects of the raw FASTQ data. Since the script specified the input as "fastq_rich", the report even generates plots concerning metadata such as the activity of each nanopore channel. The most important information in this document however is in the summary table:
-
-- Mean read length should show that the input data is indeed produced from long read sequencing, since Nanopore is a long read NGS technique (as opposed to 100-150 bp illumina short read sequencing). This is important for downstream analysis.
-- Mean read quality takes the average basecall Phred quality score over each read, and then gives the average score of all reads.
-- \>Qx shows the proportion of reads with Phred quality score > x. In the SW_Metagen project case, >Q7 shows 100% of all reads, and >Q10 shows <100%. This suggests a preselection of raw data with a minimum Phred quality score cutoff somewhere between 7 and 10.
+Porechop progress can be viewed in the terminal while the tool is running. After the trimming is complete, check the results by running FastQC on the trimmed data:
 
 ```{bash, echo=TRUE, eval=FALSE}
 
-#-- HIER KOMT EEN SCRIPT. SCRIPT MAKEN VOOR KRAKEN2.
-#-- command in de trend van: kraken2 --db /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ --threads 2 --gzip-compressed --output ~/Metagen_SW/analyse/Kraken2_test_10/test_10.kraken --report ~/Metagen_SW/analyse/Kraken2_test_10/test_10.report --use-names ~/Metagen_SW/raw_data/merged_test_10.fastq.gz
+# execute the FastQC_reporter.sh script again, with the trimmed data as input:
+
+bash FASTQC_reporter.sh -I bewerkte_data -O analyse/FastQC
 
 ```
+
+Open the new html report and compare the "Per base sequence quality" with the earlier report. 
+
+![Figure 2: FastQC report on combined_10_porechopped.fastq.gz](misc/FastQC_combined_10_porechopped.PNG)
+
+<br>In this example, the low-quality basecalls initially seen in figure 1 have been trimmed off by porechop, increasing the overall quality of the data.
+
+
+
 
 
