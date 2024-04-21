@@ -83,19 +83,8 @@ for file in "$indir"/*.fastq.gz; do
   read_lengths+=("$current_read_length")
 done
 
-shortest_read=$(
-  { for file in "$indir"/*.fastq.gz; do
-      gunzip -c "$file" | awk 'NR%4==2 {print length, $0}'
-    done | sort -n | head -n1 | cut -d ' ' -f 2- | wc -c
-  } 2>/dev/null
-)
-
-longest_read=$(
-  { for file in "$indir"/*.fastq.gz; do
-      gunzip -c "$file" | awk 'NR%4==2 {print length, $0}'
-    done | sort -n | tail -n1 | cut -d ' ' -f 2- | wc -c
-  } 2>/dev/null
-)
+shortest_read=$(for file in "$indir"/*.fastq.gz; do zcat "$file" | awk 'NR%4==2 {if(min=="" || length<min){min=length}} END{print min}'; done | sort -n | head -n1)
+longest_read=$(for file in "$indir"/*.fastq.gz; do zcat "$file" | awk 'NR%4==2 {if(max=="" || length>max){max=length}} END{print max}'; done | sort -n | tail -n1)
 
 ## step 6: calculations:
 
@@ -111,7 +100,7 @@ total_length_Mb=$(($total_length / 1000000))
 
 ## step 7: presentation:
 
-outfile="SW_FASTQ_summary.txt"
+outfile="FASTQ_summary.txt"
 
 {
 echo -e "\nSummary analysis of FASTQ files found in $indir directory." 

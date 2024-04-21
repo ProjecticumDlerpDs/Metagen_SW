@@ -1,6 +1,6 @@
 ---
 title: "Metagenomic data analysis pipeline"
-subtitle: "Voor het verwerken en analyseren van Oxford Nanopore Technologies’ MinION long-read, single-end shotgun sequencing data"
+subtitle: "For Oxford Nanopore Technologies’ MinION long-read, single-end shotgun sequencing data"
 author: "Moreno Serafino"
 date: "`r Sys.Date()`"
 output:
@@ -18,13 +18,58 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-[blabla]
+This pipeline is designed for analyzing Next-Generation Sequencing data. The raw data used for testing this pipeline originate from two separate ONT MinION long-read, single-end shotgun DNA-sequencing experiments on ditch water using R9.4.1 flow-cells, presented in fastq format. This Markdown document will therefore use the ditch water experiment data to guide the reader through the analysis pipeline. The point of this pipeline, however, is that data from any other similar sequencing experiment can be used as input. The end result will be a comprehensive overview of microbe composition in origin samples, supported by multiple instances of quality control. 
 
-## Contents
+Note: this markdown document is aimed at people with limited to zero command line experience.
+
+Note: phrases in **bold** specify commands; phrases in *italics* specify scripts.
+<br>
+
+### Contents
 
 [inhoudsopgave]
+<br>
 
-## Library setup:
+### Environment setup:
+
+To properly run this pipeline, a number of 'packages' needs to be installed first. These packages are available online and contain the code necessary to execute all downstream scripts and commands. The 'conda' package management system is used to install these packages to a specific 'conda environment', which will help avoid conflicts with other programs present on the server.
+
+**conda update** updates the conda system; it is good practice to update first.<br>
+**conda create [name_of_environment]** will create a new environment.<br>
+**conda activate [name_of_environment]** will switch the active working directory to that environment and thus activate all installed packages.<br>
+**conda install [name_of_package]** will install packages to the currently active conda environment.
+
+For this pipeline, the 'meta' conda environment is created and configured as follows:
+
+
+```{bash, echo=TRUE, eval=FALSE}
+
+# update conda; 'echo "y"' will automatically answer a confirmation prompt:
+
+echo "y" | conda update -n base conda
+
+# create meta environment:
+
+conda create meta
+
+# activate conda meta environment:
+
+conda activate meta
+
+# install all packages necessary for downstream scripts and commands:
+
+echo "y" | conda install [...]
+echo "y" | conda install [...]
+echo "y" | conda install [...]
+
+```
+
+Note: The currently active conda environment is always displayed in the terminal between brackets at the start of each line.
+<br>
+
+### Library setup:
+
+[blabla]
 
 ```{r}
 
@@ -32,180 +77,99 @@ knitr::opts_chunk$set(echo = TRUE)
 # ...
 
 ```
+<br>
 
+### Working directory
 
-## Environment setup:
+The working directory with all the necessary files can be found here: home/1790915/Metagen_SW. Scripts will not work from other directories unless the path is specified. Change your directory with **cd /home/data/1790915/Metagen_SW**. Then check the current working directory with **pwd**. The virtual workspace is now properly set up.
+<br>
 
-```{bash, echo=TRUE, eval=FALSE}
+### About scripts
 
-# Update conda; echo "y" to automatically answer prompt:
-
-echo "y" | conda update -n base conda
-
-# activate conda meta environment:
-
-conda activate meta
-
-```
+The next section contains the first bash script. These scripts can simply be run from the terminal. However, most scripts need to know where to find their input data, and where to store their output file(s), among other variables. The scripts are designed so that the user may provide these variables as options. Use **bash [script_name.sh] -h** to print an overview of a script's function and usage. This works for all bash scripts down the line.<br><br><br><br>
 
 
 # Raw sequencing data overview
 
-To create a summary report of the raw data for general purpose, run the FASTQ_summarizer.sh script. The "longest read length" result can provide insight in the type of sequencing data (long read vs. short read). Note that this RMarkdown file is for long read data analysis only.
+The raw data from the ditch water project can be found on the HU server: /home/data/projecticum/SW/raw_data. There are 288 separate .fastq.gz files. For the purposes of testing the pipeline, a subset of 10 files is created. The following files are chosen through random number generation:
 
-cmd usage:  
-bash FASTQ_summarizer.sh  
--I /home/data/projecticum/SW/raw_data  
--O ~/Metagen_SW/analyse  
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_17_0.fastq.gz
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_29_0.fastq.gz
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_56_0.fastq.gz
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_78_0.fastq.gz
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_88_0.fastq.gz
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_115_0.fastq.gz
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_173_0.fastq.gz
+fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_202_0.fastq.gz
+fastq_runid_e0b226454119dd745e929660cd7d0704fc8084f2_16_0.fastq.gz
+fastq_runid_e0b226454119dd745e929660cd7d0704fc8084f2_40_0.fastq.gz
+
+These files are copied from the server, and concatenated (combined) into one .fastq.gz file:
 
 ```{bash, echo=TRUE, eval=FALSE}
 
-#!/bin/bash
+# copy the specified files from the server to the raw_data folder:
 
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_17_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_29_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_56_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_78_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_88_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_115_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_117_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_49c9a95cddfedd94200fbd3b545c9c9571fc43c7_202_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_e0b226454119dd745e929660cd7d0704fc8084f2_16_0.fastq.gz ../raw_data
+cp /home/data/projecticum/SW/raw_data/fastq_runid_e0b226454119dd745e929660cd7d0704fc8084f2_40_0.fastq.gz ../raw_data
 
-## step 0: set locale to avoid awk warning
+# concatenate into one file:
 
-export LC_ALL=C
+zcat /raw_data/fastq_runid* > combined_10.fastq
 
+# compress to limit disk space:
+ 
+gzip /raw_data/combined_10.fastq
 
-## step 1: script description and usage:
+# remove the copied (separate) fastq files:
 
-print_usage() {
-  printf "\nDescription of FASTQ_summarizer.sh: 
-  
-  This script is used for insightful summary of selected FASTQ files.
-  
-  Usage: 
-  -I input directory with fastq.gz files
-  -O output directory (created through script)
-  -h for help
-
-  Example cmd line:
-	bash FASTQ_summarizer.sh -I path/to/FASTQ/data -O new/ouput/directory\n\n"
-}
-
-## step 2: flag definition:
-
-while getopts I:O:h flag; do
-  case "${flag}" in
-    I) indir="${OPTARG}"  ;;
-    O) outdir="${OPTARG}" ;;
-    h) print_usage
-       exit 1             ;;
-    *) echo -e "\nPlease provide valid options (-I and -O are required)."
-       echo -e "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
-       exit 1             ;;
-  esac
-done
-
-
-## step 3.1: check whether flags have been provided by the user:
-
-if [ -z "$indir" ] || [ -z "$outdir" ]; then
-  echo -e "\nPlease provide valid options (-I and -O are required)."
-  echo -e "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
-  exit 1
-fi
-
-
-## step 3.2: check whether directory -I exists and contains data:
-
-if [ ! -d "$indir" ]; then
-  echo -e "\nThe provided input directory does not exist."
-  echo "Use cmd \"bash FASTQ_summarizer.sh -h\" for instructions.\n"
-  exit 1
-fi
-
-
-## step 3.3: check whether directory -O exists, create if necessary:
-
-if [ ! -d "$outdir" ]; then
-  echo -e "\nCreating output directory: $outdir"
-  mkdir -p "$outdir"
-    exit 1
-fi
-
-
-## step 4: empty variables:
-
-total_files=0
-total_length=0
-read_lengths=()
-sorted_lengths=()
-
-
-## step 5: analysis:
-
-echo -e "\nAnalizing ..."
-
-for file in "$indir"/*.fastq.gz; do
-  current_read_length=$(awk 'NR%4==2 {sum+=length}END{print sum}' "$file")
-  total_files=$((total_files + 1))
-  total_length=$((total_length + current_read_length))
-  read_lengths+=("$current_read_length")
-done
-
-shortest_read=$(
-  { for file in "$indir"/*.fastq.gz; do
-      gunzip -c "$file" | awk 'NR%4==2 {print length, $0}'
-    done | sort -n | head -n1 | cut -d ' ' -f 2- | wc -c
-  } 2>/dev/null
-)
-
-longest_read=$(
-  { for file in "$indir"/*.fastq.gz; do
-      gunzip -c "$file" | awk 'NR%4==2 {print length, $0}'
-    done | sort -n | tail -n1 | cut -d ' ' -f 2- | wc -c
-  } 2>/dev/null
-)
-
-## step 6: calculations:
-
-echo -e "\nCalculating ..."
-
-total_reads=0
-for file in "$indir"/*fastq.gz; do
-  lines=$(wc -l < "$file")
-  total_reads=$((total_reads + lines /4))
-done
-average_length=$(($total_length / $total_reads))
-
-
-## step 7: presentation:
-
-outfile="SW_FASTQ_summary.txt"
-
-{
-echo -e "\nSummary analysis of FASTQ files found in $indir directory." 
-echo "Script used: FASTQ_summarizer.sh."
-echo "Input directory used: $indir"
-echo "Script execution: $(date)"
-echo -e "\n\n#===Report=======#\n\nTotal number of FASTQ files used as input:" 
-echo "$total_files"
-echo -e "\nTotal number of reads:"
-echo "$total_reads"
-echo -e "\nTotal combined read length:"
-echo "$total_length"
-echo -e "\nShortest read length:"
-echo "$shortest_read"
-echo -e "\nLongest read length:"
-echo "$longest_read"
-echo -e "\nAverage read length:"
-echo "$average_length"
-echo -e "\n#===Fin==========#"
-} > "$outdir/$outfile"
-
-echo -e "\nSummary report added to: $outdir/$outfile.\n"
+rm /raw_data/fastq_runid*
 
 ```
 
-```{bash, engine.opts='-i', echo=TRUE, eval=TRUE}
+```{bash, echo=TRUE, eval=TRUE}
 
-# Show summary:
+# check the combined file's format by viewing part of the first read:
 
-cat ~/Metagen_SW/analyse/analyse_misc/SW_FASTQ_summary.txt
+zcat raw_data/combined_10.fastq.gz | head -n4 | cut -c1-400
+
+# it should look something like this:
 
 ```
+<br>
+
+The first line in the read shows the metadata, specifically the type of sequencing experiment the data originates from (in this case R9.4.1 MinION, DNA). 
+If your data does not provide clear metadata, a quick summary report can be created through the *FASTQ_summarizer.sh* script. 
+
+```{bash, echo=TRUE, eval=FALSE}
+
+# print the script's function and usage:
+
+bash FASTQ_summarizer.sh -h
+
+# execute the script with proper options:
+
+bash FASTQ_summarizer.sh -I raw_data -O analyse/analyse_misc
+
+```
+
+```{bash, echo=TRUE, eval=TRUE}
+
+# open summary report:
+
+cat analyse/analyse_misc/FASTQ_summary.txt
+
+```
+
+The "longest read length" result provides insight in the type of sequencing data: if this result is 300 basecalls or less, it would be a strong indication that the raw data originates from Illumina short-read sequencing instead of long-read sequencing.<br><br><br><br>
 
 ## FastQC report
 
