@@ -272,4 +272,4 @@ bash FASTQ_NanoPlotter.sh -I bewerkte_data -O analyse/NanoPlot
 
 ![Figure 3: NanoPlot summary statistics on "combined_10" (left) and "combined_10_porechopped" (right)](misc/NanoPlot_stats_combined_10_en_porechopped.PNG)
 
-<br>As shown, the average read quality increased (slightly) after adapter trimming using the porechop tool.
+<br>As shown, the average read quality increased (slightly) after trimming away adapter sequences using the porechop tool.
