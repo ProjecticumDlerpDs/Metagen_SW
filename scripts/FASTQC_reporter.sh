@@ -6,8 +6,8 @@
 ## step 2: define input options.
 ## step 3: check input and output.
 ## step 4: execute FastQC analysis through fastqc command.
-## step 5: cleanup.
-## step 6: [bugged] open FastQC report.
+## step 5: cleanup excess files.
+## step 6: refer to output [xdg-open bugged].
 
 
 ### code ###
@@ -15,7 +15,7 @@
 ## step 1: script description and usage:
 
 print_usage() {
-  printf "\nDescription of FastQC_reporter.sh: 
+  printf "\nDescription of FASTQC_reporter.sh: 
   
   This script can be used to create FastQC reports for fastq.gz files.
   
@@ -27,7 +27,7 @@ print_usage() {
   Example cmd line:
 	bash FASTQC_reporter.sh 
 	-I path/to/FASTQ/data 
-	-O new/ouput/directory (can be created through script)\n\n"
+	-O ouput/directory (can be created through script)\n\n"
 }
 
 
@@ -72,10 +72,9 @@ if [ ! -d "$outdir" ]; then
 fi
 
 
-## step 4: FastQC analysis report:
+## step 4: create FastQC analysis report:
 
-for file in "$indir"/*.fastq.gz
-do
+for file in "$indir"/*.fastq.gz; do
     echo -e "Running FastQC on $file...\n"
     fastqc "$file" -o "$outdir"
 done
@@ -83,13 +82,16 @@ done
 echo -e "\nFastQC analysis complete. Please check $outdir.\n\n"
 
 
-# step 5: cleanup output folder:
+## step 5: cleanup output folder:
 
 if [ -n "$(find "$outdir" -maxdepth 1 -type f -name '*fastqc.zip')" ]; then
     rm "$outdir"/*fastqc.zip
 fi
 
 
-# step 6: open FastQC report:
+## step 6: open FastQC report:
 
 # [bugged] xdg-open "$outdir"/$infile*.html
+
+
+
