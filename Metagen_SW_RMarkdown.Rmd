@@ -65,6 +65,8 @@ echo "y" | conda install fastqc
 echo "y" | conda install Porechop
 echo "y" | conda install NanoPlot
 echo "y" | conda install [...]
+echo "y" | conda install [...]
+echo "y" | conda install [...]
 
 ```
 
@@ -157,7 +159,7 @@ If your data does not provide clear metadata, a quick summary report can be crea
 
 ```{bash, echo=TRUE, eval=FALSE}
 
-# print the script's function and usage (optional):
+# print the FASTQ_summarizer.sh script function and usage (optional):
 
 bash FASTQ_summarizer.sh -h
 
@@ -194,7 +196,7 @@ The FastQC tool will be used to get a quick qualitative overview using the basec
 
 fastqc -h
 
-# print the FASTQC_reporter.sh function and usage (optional):
+# print the FASTQC_reporter.sh script function and usage (optional):
 
 bash FASTQC_reporter.sh -h
 
@@ -256,7 +258,7 @@ The total average Phred-scores per input, among other values, can be calculated 
 
 NanoPlot -h 
 
-# print the FASTQ_NanoPlotter.sh function and usage (optional):
+# print the FASTQ_NanoPlotter.sh script function and usage (optional):
 
 bash FASTQ_NanoPlotter.sh -h
 
@@ -272,4 +274,64 @@ bash FASTQ_NanoPlotter.sh -I bewerkte_data -O analyse/NanoPlot
 
 ![Figure 3: NanoPlot summary statistics on "combined_10" (left) and "combined_10_porechopped" (right)](misc/NanoPlot_stats_combined_10_en_porechopped.PNG)
 
-<br>As shown, the average read quality increased (slightly) after trimming away adapter sequences using the porechop tool.
+<br>As shown, the average read quality increased (slightly) after trimming away adapter sequences using the porechop tool.<br><br><br>
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Taxonomy
+
+### Kraken2 classification
+
+The cleaned data can now be used as input for taxonomic analysis. Taxonomy will be done using the Kraken tools suite, including Kraken2, Bracken and Pavian (https://www.nature.com/articles/s41596-022-00738-y). BowTie2 can optionally be used if the results show contamination of human origin.
+
+Kraken2 uses *k*-mer analysis and large genome databases in order to assign reads to specific species. Since the broadest databases require 700+ GB, there are various 'mini' databases available with much lower processing requirements. However, this means that more sample reads might be labeled as unclassified.
+
+(See also https://github.com/DerrickWood/kraken2/blob/master/docs/MANUAL.markdown.)
+
+For this project, the *Kraken2_classifier.sh* script is written using the (((MINIKRAKEN OP SERVER, wordt nog vervangen))) database (((REDEN))). It can be executed as follows.
+
+```{bash, eacho=TRUE, eval=FALSE}
+
+# print the kraken2 tool description (optional):
+
+kraken2 -h
+
+# print the Kraken2_classifier.sh script function and usage (optional):
+
+bash Kraken2_classifier.sh -h
+
+# execute the script with proper flags:
+
+bash Kraken2_classifier.sh -i ~/Metagen_SW/bewerkte_data/combined_10_porechopped.fastq.gz -O ~/Metagen_SW/analyse/Kraken2/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+
+```
+
+<br>The script will save the results to the newly made analyse/Kraken2 folder. The "combined_10_porechopped.report" file shows the complete taxonomy of all reads in the input file, with representation in percentages (%) in the first column. The overall percentages of classified and unclassified ("U") reads can be seen in the first two lines of this document. 
+
+```{bash, echo=TRUE, eval=TRUE}
+
+cat analyse/Kraken2/combined_10_porechopped.report | head -n2
+
+```
+
+
+### Bracken abundance estimation
+
+To give a better representation of the actual microbial composition of the sample, the Kraken2 output is used as input for the Bracken tool, which estimates species abundances.
+
+```{bash, echo=TRUE, eval=FALSE}
+
+bracken -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ -i ~/Metagen_SW/analyse/Kraken2/combined_10_porechopped.report -o ~/Metagen_SW/analyse/bracken/combined_10_porechopped.bracken
+
+```
+
+
+
+
+
+
+
+
+
+
