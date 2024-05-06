@@ -64,6 +64,7 @@ conda activate meta
 echo "y" | conda install fastqc
 echo "y" | conda install Porechop
 echo "y" | conda install NanoPlot
+echo "y" | conda install krona
 echo "y" | conda install [...]
 echo "y" | conda install [...]
 echo "y" | conda install [...]
@@ -327,10 +328,25 @@ bracken -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ -i ~/Metag
 ```
 
 
+### Krona species visualization
 
+The Bracken report output can be visualized using the Krona tool.
 
+```{bash, echo=TRUE, eval=FALSE}
 
+ktImportText -o Krona_output.html ~/Metagen/analyse/Bracken/combined_10_porechopped_bracken_species.report
 
+# nog aanpassen:
+## aanpassen naar script 
+## ouput naar juiste folders 
+## homo sapiens (2%) reads verwijderen (BowTie2)
+## alles <x% samenvoegen als 'other'
+
+```
+
+![Figure 4: Krona pie chart visualization of bracken output "combined_10_porechopped_bracken_species.report" ](misc/Krona_combined_10.PNG)
+
+<br><br><br>
 
 
 
