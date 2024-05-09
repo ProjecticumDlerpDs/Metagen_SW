@@ -83,7 +83,7 @@ repfile="$outdir/${base_filename%.fastq.gz}.report"
 
 ## step 4.2: Kraken2 classification:
 
-kraken2 --db "$kraken2_db" --threads "$(nproc)" --output "$outfile" --report "$repfile" "$infile"
+kraken2 --db "$kraken2_db" --threads "$(nproc)" --memory-mapping --output "$outfile" --report "$repfile" "$infile"
 
 
 ## step 5: refer to output:

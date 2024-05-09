@@ -10,10 +10,11 @@ output:
 ---
 
 
-```{r setup, include=FALSE}
+```{r general setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 ```
+
 <br><br>
 
 --------------------------------------------------
@@ -45,7 +46,7 @@ To properly run this pipeline, a number of 'packages' needs to be installed firs
 For this pipeline, the 'meta' conda environment is created and configured as follows:
 
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash conda environment setup, echo=TRUE, eval=FALSE}
 
 # update conda; 'echo "y"' will automatically answer a confirmation prompt:
 
@@ -65,8 +66,8 @@ echo "y" | conda install fastqc
 echo "y" | conda install Porechop
 echo "y" | conda install NanoPlot
 echo "y" | conda install krona
-echo "y" | conda install [...]
-echo "y" | conda install [...]
+echo "y" | conda install minimap2
+echo "y" | conda install bowtie2
 echo "y" | conda install [...]
 
 ```
@@ -78,7 +79,7 @@ Note: The currently active conda environment is always displayed in the terminal
 
 [blabla]
 
-```{r}
+```{r library setup}
 
 # load libraries:
 # ...
@@ -115,7 +116,7 @@ fastq_runid_e0[...]_40_0.fastq.gz
 
 These files are copied from the server, and concatenated (combined) into one .fastq.gz file:
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash server files, echo=TRUE, eval=FALSE}
 
 # copy the specified files from the server to the raw_data folder:
 
@@ -132,11 +133,11 @@ cp /home/data/projecticum/SW/raw_data/fastq_runid_e0*_40_0.fastq.gz ../raw_data
 
 # concatenate into one file:
 
-zcat /raw_data/fastq_runid* > combined_10.fastq
+zcat /raw_data/fastq_runid* > test10.fastq
 
 # compress to limit disk space:
  
-gzip /raw_data/combined_10.fastq
+gzip /raw_data/test10.fastq
 
 # remove the copied (separate) fastq files:
 
@@ -144,11 +145,11 @@ rm /raw_data/fastq_runid*
 
 ```
 
-```{bash, echo=TRUE, eval=TRUE}
+```{bash server files zcat, echo=TRUE, eval=TRUE}
 
 # check the combined file's format by viewing part of the first read:
 
-zcat raw_data/combined_10.fastq.gz | head -n4 | cut -c1-400
+zcat raw_data/test10.fastq.gz | head -n4 | cut -c1-400
 
 # it should look something like this:
 
@@ -158,7 +159,7 @@ zcat raw_data/combined_10.fastq.gz | head -n4 | cut -c1-400
 The first line in the read shows the metadata, specifically the type of sequencing experiment the data originates from (in this case R9.4.1 MinION, DNA). 
 If your data does not provide clear metadata, a quick summary report can be created through the *FASTQ_summarizer.sh* script. 
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash FASTQ summary, echo=TRUE, eval=FALSE}
 
 # print the FASTQ_summarizer.sh script function and usage (optional):
 
@@ -166,11 +167,13 @@ bash FASTQ_summarizer.sh -h
 
 # execute the script with proper flags:
 
-bash FASTQ_summarizer.sh -I raw_data -O analyse/analyse_misc
+bash FASTQ_summarizer.sh \
+-I raw_data              \
+-O analyse/analyse_misc
 
 ```
 
-```{bash, echo=TRUE, eval=TRUE}
+```{bash FASTQ summary cat, echo=TRUE, eval=TRUE}
 
 # open summary report:
 
@@ -191,7 +194,7 @@ The "longest read length" result provides insight in the type of sequencing data
 
 The FastQC tool will be used to get a quick qualitative overview using the basecall-linked Phred-scores in the dataset. The *FASTQC_reporter.sh* script takes FASTQ data, analyzes the quality scores and creates an html report. The report consists of a number of graphs that will be discussed further. 
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash FastQC, echo=TRUE, eval=FALSE}
 
 # print the fastqc tool description (optional):
 
@@ -203,13 +206,15 @@ bash FASTQC_reporter.sh -h
 
 # execute the script with proper flags:
 
-bash FASTQC_reporter.sh -I raw_data -O analyse/FastQC
+bash FASTQC_reporter.sh \
+-I raw_data             \
+-O analyse/FastQC
 
 ```
 
 Open the html report by navigating to the output directory with **cd ~/Metagen_SW/analyse/FastQC**, then click on the .html file and choose 'View in Web Browser'. The "Basic Statistics" section of the FastQC report shows an overview of the metadata. This should correspond with the *FASTQ_summarizer.sh* results from earlier.
 
-![Figure 1: FastQC report on combined_10.fastq.gz](misc/FastQC_combined_10.PNG)
+![Figure 1: FastQC report on test10.fastq.gz](misc/FastQC_test10.PNG)
 
 <br>The boxplots in the "Per base sequence quality" graph represent the quality values of the entire input per basecall 'location' in the reads, i.e. the quality scores of the first base of each read combined are represented by the first box. Results of this analysis can be used down the line to trim reads in order to obtain a subset of higher average quality.
 
@@ -220,7 +225,7 @@ Note: FastQC is originally designed for analyzing Illumina or Sanger short read 
 
 ONT uses certain adapters to assist with sequencing experiments. The 'Porechop' tool is developed to find and excise many of these adapter sequences in fastq files. the Porechop tool can be used as follows:
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash porechop, echo=TRUE, eval=FALSE}
 
 # print the porechop description (optional):
 
@@ -228,23 +233,27 @@ porechop -h
 
 # execute porechop with proper flags; note that porechop takes files instead of directories as in- and output:
 
-porechop -i raw_data/combined_10.fastq.gz -o bewerkte_data/combined_10_porechopped.fastq.gz
+porechop                            \
+-i raw_data/test10.fastq.gz         \
+-o bewerkte_data/test10_pc.fastq.gz
 
 ```
 
 Porechop progress can be viewed in the terminal while the tool is running. After the trimming is complete, check the results by running FastQC on the trimmed data:
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash porechopped FastQC, echo=TRUE, eval=FALSE}
 
 # execute the FastQC_reporter.sh script again, with the trimmed data as input:
 
-bash FASTQC_reporter.sh -I bewerkte_data -O analyse/FastQC
+bash FASTQC_reporter.sh \
+-I bewerkte_data        \
+-O analyse/FastQC
 
 ```
 
 Open the new html report and compare the "Per base sequence quality" with the earlier report. 
 
-![Figure 2: FastQC report on combined_10_porechopped.fastq.gz](misc/FastQC_combined_10_porechopped.PNG)
+![Figure 2: FastQC report on test10_pc.fastq.gz](misc/FastQC_test10_pc.PNG)
 
 <br>In this example, the low-quality basecalls initially seen in figure 1 have been trimmed off by porechop, increasing the overall quality of the data.
 <br>
@@ -253,7 +262,7 @@ Open the new html report and compare the "Per base sequence quality" with the ea
 
 The total average Phred-scores per input, among other values, can be calculated using the NanoPlot tool. The *FASTQ_NanoPlotter.sh* script can calculate Phred-score averages for both the original subset and the Porechop-trimmed subset.
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash NanoPlot, echo=TRUE, eval=FALSE}
 
 # print the nanoplot tool description (optional):
 
@@ -265,15 +274,19 @@ bash FASTQ_NanoPlotter.sh -h
 
 # execute the script with proper flags on the original subset:
 
-bash FASTQ_NanoPlotter.sh -I raw_data -O analyse/NanoPlot
+bash FASTQ_NanoPlotter.sh \
+-I raw_data               \
+-O analyse/NanoPlot
 
 # execute the script with proper flags on the Porechop-trimmed subset:
 
-bash FASTQ_NanoPlotter.sh -I bewerkte_data -O analyse/NanoPlot
+bash FASTQ_NanoPlotter.sh \
+-I bewerkte_data          \
+-O analyse/NanoPlot
 
 ```
 
-![Figure 3: NanoPlot summary statistics on "combined_10" (left) and "combined_10_porechopped" (right)](misc/NanoPlot_stats_combined_10_en_porechopped.PNG)
+![Figure 3: NanoPlot summary statistics on "test10" (left) and "test10_pc" (right)](misc/NanoPlot_stats_test10_test10_pc.PNG)
 
 <br>As shown, the average read quality increased (slightly) after trimming away adapter sequences using the porechop tool.<br><br><br>
 
@@ -292,7 +305,7 @@ Kraken2 uses *k*-mer analysis and large genome databases in order to assign read
 
 For this project, the *Kraken2_classifier.sh* script is written using the (((MINIKRAKEN OP SERVER, wordt nog vervangen))) database (((REDEN))). It can be executed as follows.
 
-```{bash, eacho=TRUE, eval=FALSE}
+```{bash Kraken2, eacho=TRUE, eval=FALSE}
 
 # print the kraken2 tool description (optional):
 
@@ -304,15 +317,18 @@ bash Kraken2_classifier.sh -h
 
 # execute the script with proper flags:
 
-bash Kraken2_classifier.sh -i ~/Metagen_SW/bewerkte_data/combined_10_porechopped.fastq.gz -O ~/Metagen_SW/analyse/Kraken2/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+bash Kraken2_classifier.sh                                    \
+-i ~/Metagen_SW/bewerkte_data/test10_pc.fastq.gz              \ 
+-O ~/Metagen_SW/analyse/Kraken2/                              \
+-d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
 
 ```
 
-<br>The script will save the results to the newly made analyse/Kraken2 folder. The "combined_10_porechopped.report" file shows the complete taxonomy of all reads in the input file, with representation in percentages (%) in the first column. The overall percentages of classified and unclassified ("U") reads can be seen in the first two lines of this document. 
+<br>The script will save the results to the newly made analyse/Kraken2 folder. The "test10_pc.report" file shows the complete taxonomy of all reads in the input file, with representation in percentages (%) in the first column. The overall percentages of classified and unclassified ("U") reads can be seen in the first two lines of this document. 
 
-```{bash, echo=TRUE, eval=TRUE}
+```{bash kraken2 cat, echo=TRUE, eval=TRUE}
 
-cat analyse/Kraken2/combined_10_porechopped.report | head -n2
+cat analyse/Kraken2/test10_pc.report | head -n2
 
 ```
 
@@ -321,9 +337,12 @@ cat analyse/Kraken2/combined_10_porechopped.report | head -n2
 
 To give a better representation of the actual microbial composition of the sample, the Kraken2 output is used as input for the Bracken tool, which estimates species abundances.
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash bracken, echo=TRUE, eval=FALSE}
 
-bracken -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ -i ~/Metagen_SW/analyse/Kraken2/combined_10_porechopped.report -o ~/Metagen_SW/analyse/bracken/combined_10_porechopped.bracken
+bracken                                                       \
+-d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ \
+-i ~/Metagen_SW/analyse/Kraken2/test10_pc.report              \
+-o ~/Metagen_SW/analyse/bracken/test10_pc.bracken
 
 ```
 
@@ -332,9 +351,11 @@ bracken -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ -i ~/Metag
 
 The Bracken report output can be visualized using the Krona tool.
 
-```{bash, echo=TRUE, eval=FALSE}
+```{bash Krona, echo=TRUE, eval=FALSE}
 
-ktImportText -o Krona_output.html ~/Metagen/analyse/Bracken/combined_10_porechopped_bracken_species.report
+ktImportText                                               \
+-o Krona_output.html                                       \
+~/Metagen/analyse/Bracken/test10_pc_bracken_species.report
 
 # nog aanpassen:
 ## aanpassen naar script 
@@ -344,10 +365,91 @@ ktImportText -o Krona_output.html ~/Metagen/analyse/Bracken/combined_10_porechop
 
 ```
 
-![Figure 4: Krona pie chart visualization of bracken output "combined_10_porechopped_bracken_species.report" ](misc/Krona_combined_10.PNG)
+![Figure 4: Krona pie chart visualization of bracken output "test10_pc_bracken_species.report" ](misc/Krona_test10_pc.PNG)
 
 <br><br><br>
 
+### Minimap2 host sequence removal
 
+As seen in the Krona results, homo sapiens is represented in the chart. In fact, the entire upper-left (red) area is reserved for the human species. This indicates human contamination of the sample during preparation and sequencing. In other experiments, for example when analyzing metagenomic samples from the human gut, human DNA is expected to be present in high amounts. In both cases, human DNA can be removed by first aligning the sample to a human reference genome using the minimap2 tool. This tool compares reads to a specific reference genome (human), after which the unaligned reads can be selected, thus cleaning up irrelevant data. BowTie2 is another tool for reference alignment and for host DNA removal, except it is more suited for Phred-scores >33 from Illumina sequencing.
 
+```{bash minimap2 host sequence removal, echo=TRUE, eval=FALSE}
+
+# get GRCh38 human genome reference
+
+cd ~/Metagen_SW/referentie
+
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
+
+# create minimap2 GRCh38 reference index:
+
+minimap2                                              \
+-x map-ont                                            \
+-d GRCh38_noalt_index.mmi                             \
+GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz    
+
+# minimap2 alignment to GRCh38 (output as SAM-file):
+
+minimap2                                              \
+-a                                                    \
+-x map-ont                                            \
+-t 4 GRCh38_noalt_index.mmi                           \    
+~/Metagen_SW/bewerkte_data/test10_pc.fastq.gz >       \
+~/Metagen_SW/bewerkte_data/test10_pc.sam        
+
+# select unaligned reads and convert SAM to BAM:
+
+samtools view                                         \
+-b                                                    \
+-f 4                                                  \
+~/Metagen_SW/bewerkte_data/test10_pc.sam >            \
+~/Metagen_SW/bewerkte_data/test10_pc_nh.bam   
+
+# convert BAM to fastq.gz for downstream use (Kraken2):
+
+samtools fastq                                        \
+test10_pc_nh.bam >                                    \
+test10_pc_nh.fastq.gz
+
+```
+
+.....
+testing
+
+# dit geeft bam in bewerkte_data [bewerkte_data/output.bam, bewerkte_data/output.bam.bai]:
+minimap2 -a -x map-ont -xsr ../referentie/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna.gz ../bewerkte_data/test10_pc.fastq.gz | samtools view -bh | samtools sort -o output.bam
+
+# dit geeft non-host output in fastq.gz [bewerkte_data/test10_pc_nh.fsatq.gz]:
+samtools fastq -f 4 -F 1 output.bam | gzip -c > test10_pc_nh.fastq.gz
+
+# dan kraken2:
+bash Kraken2_classifier.sh -i ../bewerkte_data/test10_pc_nh.fastq.gz -O ../analyse/Kraken2/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+
+# dan bracken:
+bash Bracken_estimator.sh -i ../analyse/Kraken2/test10_pc_nh.report -O ../analyse/Bracken/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+
+# dan krona:
+ktImportText -o test10_pc_nh_krona.html ../analyse/Bracken/test10_pc_nh_bracken_species.report
+
+# RESULTAAT: beter maar nog steeds veel human. Zie analyse/Krona.
+
+.....
+testing2
+
+# alle stappen staan hier:
+https://hackmd.io/@AstrobioMike/kraken2-human-read-removal#Human-read-removal-with-kraken2
+
+# directory:
+temp/kraken2_human_db
+
+# kraken2-build doet niet, dus downloaden met: 
+curl -L -o kraken2_human_db.tar.gz https://ndownloader.figshare.com/files/23567780
+...
+tar -xzvf kraken2_human_db.tar.gz
+
+# kraken2 met o.a. de unclassified (t.o.v. human) fastq als output:
+kraken2 --db kraken2_human_db/ --threads 4 --output ~/Metagen_SW/analyse/Kraken2/test10_pc_nh_hackmdio_out.txt --report ~/Metagen_SW/analyse/Kraken2/test10_pc_nh_hackmdio_report.txt --unclassified-out ~/Metagen_SW/bewerkte_data/test10_pc_nh_hackmdio_unclassified.fq ~/Metagen_SW/bewerkte_data/test10_pc.fastq.gz
+
+# zip:
+gzip bewerkte_data/test10_pc_nh_hackmdio_unclassified.fq
 
