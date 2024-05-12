@@ -355,7 +355,7 @@ The Bracken report output can be visualized using the Krona tool.
 
 ktImportText                                               \
 -o Krona_output.html                                       \
-~/Metagen/analyse/Bracken/test10_pc_bracken_species.report
+~/Metagen_SW/analyse/Bracken/test10_pc_bracken_species.report
 
 # nog aanpassen:
 ## aanpassen naar script 
@@ -413,6 +413,12 @@ test10_pc_nh.fastq.gz
 
 ```
 
+-----
+-----
+-----
+-----
+
+```{test1}
 .....
 testing
 
@@ -452,4 +458,93 @@ kraken2 --db kraken2_human_db/ --threads 4 --output ~/Metagen_SW/analyse/Kraken2
 
 # zip:
 gzip bewerkte_data/test10_pc_nh_hackmdio_unclassified.fq
+
+# kraken2 taxonomy:
+bash Kraken2_classifier.sh -i ../bewerkte_data/test10_pc_nh_hackmdio_unclassified.fq.gz -O ../analyse/Kraken2/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+
+# bracken:
+bash Bracken_estimator.sh -i ../analyse/Kraken2/test10_pc_nh_hackmdio_unclassified.fq.gz.report -O ../analyse/Bracken/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+
+# krona:
+ktImportText -o test10_pc_nh_hackmdio_unclassified_krona.html ../analyse/Bracken/test10_pc_nh_hackmdio_unclassified.fq.gz_bracken_species.report
+
+# werkt niet. zelfde resultaat als zonder bowtie/minimap/oid
+.....
+```
+
+```{test2}
+.....
+### Methode om data te verbeteren met nanofilt door te filteren op Q >x && length >10kbp:
+
+# NanoFilt heeft compatibility issues met meta env: GLIBCXX_3.4.29 not found. Om te voorkomen dat meta env niet goed meer werkt: nieuwe env maken:
+echo "y" | conda create --name nanofilt_env
+conda activate nanofilt_env
+echo "y" | conda install -c conda-forge gxx_linux-64=11.1.0
+
+# check versie (11.1.0) van libgcc-devel_linux-64:
+conda list | grep libgcc-devel_linux-64
+
+# install nanofilt:
+echo "y" | conda install bioconda::nanofilt
+
+# NanoFilt (let op hoofdletters):
+NanoFilt -h
+NanoFilt -v # 2.8.0
+
+## NanoFilt kan filteren op lengte en Phred, en kan trimmen met --headcrop en --tailcrop. Trimmen hoeft niet van de porechop FASTQC resultaten hebben al getoond dat de slechte basecalls met Porechop worden verwijderd. Daarnaast moet Porechop éérst worden gedaan wat dat bepaalt de lengte van de reads, en daarna dus filteren op lengte (en Phred).
+
+# eerst length >10 kbp proberen zoals aangegeven in Sevim et al:
+gunzip -c test10_pc.fastq.gz | NanoFilt -l 10000 | gzip > test10_pc_10kbp.fastq.gz
+conda activate meta
+
+.....
+```
+
+```{test3}
+.....
+### rerun op complete dataset (incl NanoFilt):
+
+# dataset:
+zcat /home/data/projecticum/SW/raw_data/fastq_runid_* > ~/Metagen_SW/raw_data/testSW.fastq.gz
+
+# porechop:
+porechop                            \
+-i raw_data/test10.fastq.gz         \
+-o bewerkte_data/test10_pc.fastq.gz
+
+# FastQC tussencheck:
+fastqc -o ../analyse/FastQC/ ../bewerkte_data/testSW_pc.fastq.gz 
+
+# minimap2 host removal:
+minimap2                                              \
+-a                                                    \
+-x map-ont                                            \
+-t 4 GRCh38_noalt_index.mmi                           \    
+~/Metagen_SW/bewerkte_data/test10_pc.fastq.gz >       \
+~/Metagen_SW/bewerkte_data/test10_pc.sam        
+
+# non-aligned overhouden + conversie:
+samtools -b -f 4 testSW_pc.sam > testSW_pc_nh.bam
+samtools view -b -f 4 testSW_pc.sam > testSW_pc_nh.bam
+samtools fastq testSW_pc_nh.bam > testSW_pc_nh.fastq.gz
+
+# Kraken/bracken/Krona:
+bash Kraken2_classifier.sh                                    \
+-i ~/Metagen_SW/bewerkte_data/testSW_pc_nh.fastq.gz           \
+-O ~/Metagen_SW/analyse/Kraken2                               \
+-d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+
+bash Bracken_estimator.sh                                     \
+-i ../analyse/Kraken2/testSW_pc_nh.report                     \
+-O ../analyse/Bracken/                                        \
+-d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
+
+ktImportText -o testSW_pc_nh_Krona_output.html ~/Metagen_SW/analyse/Bracken/testSW_pc_nh_bracken_species.report 
+
+# heeft nog steeds 2% human, en de rest is nog onleesbaarder veel geworden.
+.....
+```
+
+###
+DE KRAKEN2 REPORT testSW_pc_nh.report is met de 16GB database (../referentie)!!
 
