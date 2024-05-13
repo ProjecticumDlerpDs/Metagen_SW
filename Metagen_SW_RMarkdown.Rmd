@@ -548,3 +548,4 @@ ktImportText -o testSW_pc_nh_Krona_output.html ~/Metagen_SW/analyse/Bracken/test
 ###
 DE KRAKEN2 REPORT testSW_pc_nh.report is met de 16GB database (../referentie)!!
 
+test
