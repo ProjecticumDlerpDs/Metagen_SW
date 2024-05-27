@@ -44,7 +44,7 @@ kraken2_db=""
 
 while getopts i:O:d:h flag; do
   case "${flag}" in
-    i)  infile="${OPTARG}"           ;;
+    i)  infile="${OPTARG}"          ;;
     O)  outdir="${OPTARG}"          ;;
     d)  kraken2_db="${OPTARG}"      ;;
     h)  print_usage

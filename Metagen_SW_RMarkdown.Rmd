@@ -4,9 +4,9 @@ subtitle: "For Oxford Nanopore Technologies’ MinION long-read, single-end shot
 author: "Moreno Serafino"
 date: "`r Sys.Date()`"
 output:
-  html_document: default
   word_document: default
   pdf_document: default
+  html_document: default
 ---
 
 
@@ -322,6 +322,8 @@ bash Kraken2_classifier.sh                                    \
 -O ~/Metagen_SW/analyse/Kraken2/                              \
 -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
 
+## DATABASE AANPASSEN
+
 ```
 
 <br>The script will save the results to the newly made analyse/Kraken2 folder. The "test10_pc.report" file shows the complete taxonomy of all reads in the input file, with representation in percentages (%) in the first column. The overall percentages of classified and unclassified ("U") reads can be seen in the first two lines of this document. 
@@ -343,6 +345,8 @@ bracken                                                       \
 -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/ \
 -i ~/Metagen_SW/analyse/Kraken2/test10_pc.report              \
 -o ~/Metagen_SW/analyse/bracken/test10_pc.bracken
+
+## DATABASE AANPASSEN
 
 ```
 
@@ -371,7 +375,7 @@ ktImportText                                               \
 
 ### Minimap2 host sequence removal
 
-As seen in the Krona results, homo sapiens is represented in the chart. In fact, the entire upper-left (red) area is reserved for the human species. This indicates human contamination of the sample during preparation and sequencing. In other experiments, for example when analyzing metagenomic samples from the human gut, human DNA is expected to be present in high amounts. In both cases, human DNA can be removed by first aligning the sample to a human reference genome using the minimap2 tool. This tool compares reads to a specific reference genome (human), after which the unaligned reads can be selected, thus cleaning up irrelevant data. BowTie2 is another tool for reference alignment and for host DNA removal, except it is more suited for Phred-scores >33 from Illumina sequencing.
+As seen in the Krona results, *homo sapiens* is represented in the chart. In fact, the entire upper-left (red) area is reserved for the human species. This indicates human contamination of the sample during preparation and sequencing. In other experiments, for example when analyzing metagenomic samples from the human gut, human DNA is expected to be present in high amounts. In both cases, human DNA can be removed by first aligning the sample to a human reference genome using the minimap2 tool. This tool compares reads to a specific reference genome (human), after which the unaligned reads can be selected, thus cleaning up irrelevant data. BowTie2 is another tool for reference alignment and for host DNA removal, except it is more suited for Phred-scores >33 from Illumina sequencing.
 
 ```{bash minimap2 host sequence removal, echo=TRUE, eval=FALSE}
 
@@ -413,139 +417,9 @@ test10_pc_nh.fastq.gz
 
 ```
 
------
------
------
------
-
-```{test1}
-.....
-testing
-
-# dit geeft bam in bewerkte_data [bewerkte_data/output.bam, bewerkte_data/output.bam.bai]:
-minimap2 -a -x map-ont -xsr ../referentie/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna.gz ../bewerkte_data/test10_pc.fastq.gz | samtools view -bh | samtools sort -o output.bam
-
-# dit geeft non-host output in fastq.gz [bewerkte_data/test10_pc_nh.fsatq.gz]:
-samtools fastq -f 4 -F 1 output.bam | gzip -c > test10_pc_nh.fastq.gz
-
-# dan kraken2:
-bash Kraken2_classifier.sh -i ../bewerkte_data/test10_pc_nh.fastq.gz -O ../analyse/Kraken2/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
-
-# dan bracken:
-bash Bracken_estimator.sh -i ../analyse/Kraken2/test10_pc_nh.report -O ../analyse/Bracken/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
-
-# dan krona:
-ktImportText -o test10_pc_nh_krona.html ../analyse/Bracken/test10_pc_nh_bracken_species.report
-
-# RESULTAAT: beter maar nog steeds veel human. Zie analyse/Krona.
-
-.....
-testing2
-
-# alle stappen staan hier:
-https://hackmd.io/@AstrobioMike/kraken2-human-read-removal#Human-read-removal-with-kraken2
-
-# directory:
-temp/kraken2_human_db
-
-# kraken2-build doet niet, dus downloaden met: 
-curl -L -o kraken2_human_db.tar.gz https://ndownloader.figshare.com/files/23567780
-...
-tar -xzvf kraken2_human_db.tar.gz
-
-# kraken2 met o.a. de unclassified (t.o.v. human) fastq als output:
-kraken2 --db kraken2_human_db/ --threads 4 --output ~/Metagen_SW/analyse/Kraken2/test10_pc_nh_hackmdio_out.txt --report ~/Metagen_SW/analyse/Kraken2/test10_pc_nh_hackmdio_report.txt --unclassified-out ~/Metagen_SW/bewerkte_data/test10_pc_nh_hackmdio_unclassified.fq ~/Metagen_SW/bewerkte_data/test10_pc.fastq.gz
-
-# zip:
-gzip bewerkte_data/test10_pc_nh_hackmdio_unclassified.fq
-
-# kraken2 taxonomy:
-bash Kraken2_classifier.sh -i ../bewerkte_data/test10_pc_nh_hackmdio_unclassified.fq.gz -O ../analyse/Kraken2/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
-
-# bracken:
-bash Bracken_estimator.sh -i ../analyse/Kraken2/test10_pc_nh_hackmdio_unclassified.fq.gz.report -O ../analyse/Bracken/ -d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
-
-# krona:
-ktImportText -o test10_pc_nh_hackmdio_unclassified_krona.html ../analyse/Bracken/test10_pc_nh_hackmdio_unclassified.fq.gz_bracken_species.report
-
-# werkt niet. zelfde resultaat als zonder bowtie/minimap/oid
-.....
-```
-
-```{test2}
-.....
-### Methode om data te verbeteren met nanofilt door te filteren op Q >x && length >10kbp:
-
-# NanoFilt heeft compatibility issues met meta env: GLIBCXX_3.4.29 not found. Om te voorkomen dat meta env niet goed meer werkt: nieuwe env maken:
-echo "y" | conda create --name nanofilt_env
-conda activate nanofilt_env
-echo "y" | conda install -c conda-forge gxx_linux-64=11.1.0
-
-# check versie (11.1.0) van libgcc-devel_linux-64:
-conda list | grep libgcc-devel_linux-64
-
-# install nanofilt:
-echo "y" | conda install bioconda::nanofilt
-
-# NanoFilt (let op hoofdletters):
-NanoFilt -h
-NanoFilt -v # 2.8.0
-
-## NanoFilt kan filteren op lengte en Phred, en kan trimmen met --headcrop en --tailcrop. Trimmen hoeft niet van de porechop FASTQC resultaten hebben al getoond dat de slechte basecalls met Porechop worden verwijderd. Daarnaast moet Porechop éérst worden gedaan wat dat bepaalt de lengte van de reads, en daarna dus filteren op lengte (en Phred).
-
-# eerst length >10 kbp proberen zoals aangegeven in Sevim et al:
-gunzip -c test10_pc.fastq.gz | NanoFilt -l 10000 | gzip > test10_pc_10kbp.fastq.gz
-conda activate meta
-
-.....
-```
-
-```{test3}
-.....
-### rerun op complete dataset (incl NanoFilt):
-
-# dataset:
-zcat /home/data/projecticum/SW/raw_data/fastq_runid_* > ~/Metagen_SW/raw_data/testSW.fastq.gz
-
-# porechop:
-porechop                            \
--i raw_data/test10.fastq.gz         \
--o bewerkte_data/test10_pc.fastq.gz
-
-# FastQC tussencheck:
-fastqc -o ../analyse/FastQC/ ../bewerkte_data/testSW_pc.fastq.gz 
-
-# minimap2 host removal:
-minimap2                                              \
--a                                                    \
--x map-ont                                            \
--t 4 GRCh38_noalt_index.mmi                           \    
-~/Metagen_SW/bewerkte_data/test10_pc.fastq.gz >       \
-~/Metagen_SW/bewerkte_data/test10_pc.sam        
-
-# non-aligned overhouden + conversie:
-samtools -b -f 4 testSW_pc.sam > testSW_pc_nh.bam
-samtools view -b -f 4 testSW_pc.sam > testSW_pc_nh.bam
-samtools fastq testSW_pc_nh.bam > testSW_pc_nh.fastq.gz
-
-# Kraken/bracken/Krona:
-bash Kraken2_classifier.sh                                    \
--i ~/Metagen_SW/bewerkte_data/testSW_pc_nh.fastq.gz           \
--O ~/Metagen_SW/analyse/Kraken2                               \
--d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
-
-bash Bracken_estimator.sh                                     \
--i ../analyse/Kraken2/testSW_pc_nh.report                     \
--O ../analyse/Bracken/                                        \
--d /home/daur2/metagenomics/minikraken2_v2_8GB_201904_UPDATE/
-
-ktImportText -o testSW_pc_nh_Krona_output.html ~/Metagen_SW/analyse/Bracken/testSW_pc_nh_bracken_species.report 
-
-# heeft nog steeds 2% human, en de rest is nog onleesbaarder veel geworden.
-.....
-```
-
 ###
-DE KRAKEN2 REPORT testSW_pc_nh.report is met de 16GB database (../referentie)!!
-
-test
+CORRIGEREN:
+deze cmd gebruiken voor goede resultaten:
+ktImportTaxonomy -m 3 -t 5 [bracken].report -o krona.html
+Human kan worden gemaskeerd met "#" voor elke human regel in bracken.report. Dat is nu gedaan voor testSW_pc_nh_bracken_species.report
+###

@@ -5,8 +5,10 @@
 ## step 1: describe script function and usage.
 ## step 2: define input options.
 ## step 3: check input and output.
-## step 4: execute Kraken2 analysis through kraken2 command.
-## step 5: refer to output.
+## setp 4: select database.
+## step 5: output definition.
+## step 6: execute Kraken2 analysis through kraken2 command.
+## step 7: refer to output.
 
 
 ### code ###
@@ -21,14 +23,12 @@ print_usage() {
   Usage: 
     -i  input fastq.gz file
     -O  output directory (created through script)
-    -d  Kraken2 database
     -h  for help
 
   Example cmd line:
     bash Kraken2_classifier.sh 
     -i  path/to/FASTQ/file.fastq.gz 
-    -O  output/directory
-    -d  path/to/Kraken2_reference_database\n\n"
+    -O  output/directory"
 }
 
 
@@ -36,7 +36,6 @@ print_usage() {
 
 infile=""
 outdir=""
-kraken2_db=""
 
 
 ## step 2.2: flag definition:
@@ -45,10 +44,9 @@ while getopts i:O:d:h flag; do
   case "${flag}" in
     i)  infile="${OPTARG}"           ;;
     O)  outdir="${OPTARG}"          ;;
-    d)  kraken2_db="${OPTARG}"      ;;
     h)  print_usage
         exit 1                      ;;
-    *)  echo -e "\nPlease provide valid options (-i, -O, and -d are required)."
+    *)  echo -e "\nPlease provide valid options (-i and -O are required)."
         echo -e "Use cmd \"bash Kraken2_classifier.sh -h\" for instructions.\n"
         exit 1                      ;;
   esac
@@ -57,8 +55,8 @@ done
 
 ## step 3.1: check prompt:
 
-if [ -z "$infile" ] || [ -z "$outdir" ] || [ -z "$kraken2_db" ]; then
-  echo -e "\nPlease provide valid options (-i, -O, and -d are required)."
+if [ -z "$infile" ] || [ -z "$outdir" ]; then
+  echo -e "\nPlease provide valid options (-i and -O are required)."
   echo -e "Use cmd \"bash Kraken2_classifier.sh -h\" for instructions.\n"
   exit 1
 fi
@@ -74,18 +72,59 @@ else
 fi
 
 
-## step 4.1: Kraken2 output filename definition:
+## step 4.1: database selection:
+
+echo -e "\nSelect which Kraken2 reference database to use:"
+echo "1: (8 GB)  Standard database mini"
+echo "1: (16 GB) Standard database small"
+echo "1: (72 GB) Standard database \complete"
+echo "1: (<1 GB) Viral database"
+read -p "Enter the number of desired reference database:" db
+
+
+## step 4.2: download database
+
+case "$db" in
+1)
+  db_url="https://genome-idx.s3.amazonaws.com/kraken/k2_standard_08gb_20240112.tar.gz"
+  ;;
+2)
+  db_url="https://genome-idx.s3.amazonaws.com/kraken/k2_standard_16gb_20240112.tar.gz"
+  ;;
+3)
+  db_url="https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20240112.tar.gz"
+  ;;
+4)
+  db_url="https://genome-idx.s3.amazonaws.com/kraken/k2_viral_20240112.tar.gz"
+  ;;
+*)
+  echo -e "\nPlease provide valid options for reference database (1, 2, 3 or 4)."
+  exit 1
+  ;;
+esac
+
+db_dir="$outdir/kraken2_db"
+mkdir -p "$db_dir"
+echo -e "\nDownloading Kraken2 database to '$db_dir'. This may take a while...\n"
+wget -O "$db_dir/kraken2_db.tar.gz" "$db_url"
+echo -e "\nExtracting database...\n"
+tar -xzvf "$db_dir/kraken2_db.tar.gz" -C "$db_dir"
+
+
+## step 5: Kraken2 output definition:
+
+kraken2_db="$db_dir"
 
 base_filename=$(basename "$infile")
 outfile="$outdir/${base_filename%.fastq.gz}.kraken"
 repfile="$outdir/${base_filename%.fastq.gz}.report"
 
 
-## step 4.2: Kraken2 classification:
+## step 6: Kraken2 taxonomic classification:
 
 kraken2 --db "$kraken2_db" --threads "$(nproc)" --memory-mapping --output "$outfile" --report "$repfile" "$infile"
 
 
-## step 5: refer to output:
+## step 7: refer to output:
 
 echo -e "\nKraken2 analysis results saved to '$outdir'.\n"
