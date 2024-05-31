@@ -1,0 +1,307 @@
+---
+title: "Metagenomic data analysis pipeline v2"
+subtitle: "for analyzing Oxford Nanopore Technologies’ MinION long-read, single-end, metagenomic shotgun sequencing data"
+author: "Moreno Serafino"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r general setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Introduction
+
+This pipeline is designed for analyzing Next-Generation Sequencing data. The raw data used for testing this pipeline originate from two separate ONT MinION long-read, single-end shotgun DNA-sequencing experiments on ditch water using R9.4.1 flow-cells, presented in fastq format. This Markdown document will therefore use the ditch water experiment data to guide the reader through the analysis pipeline. The point of this pipeline, however, is that data from other sequencing experiments, from various environments can be used as input. The final output of this pipeline will be a comprehensive and quality controlled overview of microbe composition found in the inputdata. This markdown document is aimed at people with limited to zero command line experience.
+
+### Contents
+
+[inhoudsopgave]
+
+### Working directory setup
+
+To follow along with this analysis pipeline, it is important to follow the same folder hierarchy. Create the (empty) folders in the home-folder, and select the future working directory as follows:
+
+```{bash directory setup, echo=TRUE, eval=FALSE}
+
+# navigate to your home folder:
+
+cd ~
+
+# create folder hierarchy:
+
+mkdir -p Metagen_SW/{analyse,bewerkte_data,raw_data,referentie,scripts}
+
+# navigate to the Metagen_SW directory, from which the rest of the pipeline will be executed:
+
+cd Metagen_SW
+
+```
+
+### Environment setup
+
+To properly run this pipeline, a number of 'packages' needs to be installed first. These packages are available online and contain the code necessary to execute most downstream scripts and commands. The 'conda' package management system is used to install these packages to a specific 'conda environment', which will help avoid possible conflicts with other programs present on the server. In this case, the 'meta' conda environment is created and configured as follows:
+
+```{bash conda environment setup, echo=TRUE, eval=FALSE}
+
+# update conda, as this is good and reliable practice; 'echo "y"' will automatically answer the update confirmation prompt:
+
+echo "y" | conda update -n base conda
+
+# create meta environment:
+
+conda create meta
+
+# activate conda meta environment; note that this command needs to be executed each time the terminal is closed:
+
+conda activate meta
+
+# install all packages necessary for downstream scripts and commands; again 'echo "y"' to confirm installation:
+
+echo "y" | conda install [...]
+
+```
+
+### About scripts
+
+The next section contains the first bash script. These scripts can simply be run from the terminal. However, most scripts need to know where to find their input data, and where to store their output file(s), among other variables. The scripts are designed so that the user may provide these variables as options. Use **bash [script_name.sh] -h** to print an overview of a script's function and usage. This works for all bash scripts down the line.
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Selecting raw sequencing data for pipeline testing
+
+The raw data from the ditch water project can be found on the HU server: /home/data/projecticum/SW/raw_data. There are 288 separate fastq files, which are copied from the server and concatenated (combined) into one fastq file:
+
+```{bash server files, echo=TRUE, eval=FALSE}
+
+# copy the raw data files from the server to the raw_data folder:
+
+cp /home/data/projecticum/SW/raw_data/fastq*.fastq.gz raw_data
+
+# concatenate into one file:
+
+zcat raw_data/fastq*fastq.gz > SW.fastq
+mv SW.fastq raw/data
+
+# compress to limit disk space:
+ 
+gzip raw_data/SW.fastq
+
+# remove the separate fastq files:
+
+rm raw_data/fastq*fastq.gz
+
+```
+
+```{bash server files view, echo=TRUE, eval=TRUE}
+
+# check the combined file's format by viewing part of the first read:
+
+zcat raw_data/SW.fastq.gz | head -n4 | cut -c1-400
+
+# it should look like this:
+
+```
+
+The first line in the read shows the metadata, specifically the type of sequencing experiment the data originates from (in this case DNA-sequencing with R9.4.1 ONT MinION flow-cells). 
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Initial quality control
+
+### FastQC analysis on raw data
+
+The FastQC tool will be used to get a quick qualitative overview using the basecall-linked Phred-scores in the dataset. The *fastqc_reporter.sh* script takes fastq data, analyzes the quality scores and creates an html report. The report consists of a number of graphs that will be discussed further. The most important results will show average quality scores per base location in the input reads.
+
+```{bash FastQC, echo=TRUE, eval=FALSE}
+
+# print the fastqc tool description (optional):
+
+fastqc -h
+
+# print the fastqc_reporter.sh script function and usage (optional):
+
+bash scripts/fastqc_reporter.sh -h
+
+# execute the script with proper flags:
+
+bash fastqc_reporter.sh \
+-I raw_data             \
+-O analyse/fastqc
+
+```
+
+Open the html report by navigating to the output directory and viewing the html in a web browser. The "Basic Statistics" section of the FastQC report shows an overview of the metadata.
+
+![Figure 1: summary of FastQC report on SW.fastq.gz without further adjustments. Results of this analysis will be compared with results after manipulating the input data and adjusting input parameters. Note that FastQC was originally designed for analyzing Illumina or Sanger short read sequencing data. The "Encoding" measurement under "Basic Statistics" should confirm this. Phred scores from short read sequencing are expected to be much higher than those of Nanopore long reads. Phred scores for Nanopore MinION R9.4.1 experiments should preferably be > 8. The color-coding in the "Per base sequence quality" graph should therefore not be taken into account.](misc/SW_fastqc.PNG)
+
+<br>The box-and-whisker-plots in the "Per base sequence quality" graph represent the quality values of the entire input per basecall 'location' in the reads, i.e. the quality scores of each first base in the reads combined are represented by the first box. For NanoPore MinION R9.4.1 sequencing, using only data with quality scores of >7 is recommended by ONT, while other more scrutinizing literature accepts only >10 (Delahaye and Nicolas, 2021). Despite comparatively high error rates, the R9.4.1 flow-cell can still generate data with >97% accuracy, corresponding to a Phred-score of 16 (Ni et al, 2023). The ditch water results show that the average Phred-scores are low at the start and near the ends of the reads, while the middle part of the graph shows average quality scores to be around 12 to 18. Therefore, the next goal of this pipeline is to manipulate the raw data by filtering/trimming away the reads that cause the lower quality at the beginnings and ends. To determine parameters for filtering out low-quality reads, first the correlation between read length and read quality will be examined. NanoPore is designed for generating long read data, however the FastQC summary shows that reads as short as 34 bases have been detected. The sequence length distribution graph also suggests many short reads to be present in the data. 
+
+![Figure 2: FastQC on SW.fastq.gz showing read length distribution.](misc/SW_fastqc_lengths.PNG)
+
+### NanoPlot analysis on raw data
+
+For finding possible correlations between read length and read quality, the NanoPlot tool can be used through the *fastq_nanoplotter.sh* script. The report gives summary statistics and plots with regards to quality scores.
+
+```{bash NanoPlot, echo=TRUE, eval=FALSE}
+
+# print the nanoplot tool description (optional):
+
+NanoPlot -h 
+
+# print the fastq_nanoplotter.sh script function and usage (optional):
+
+bash scripts/fastq_nanoplotter.sh -h
+
+# execute the script with proper flags on the file in raw_data:
+
+bash scripts/fastq_nanoplotter.sh \
+-I raw_data                       \
+-O analyse/nanoplot
+
+# execute the script with proper flags:
+
+bash scripts/fastq_nanoplotter.sh \
+-I raw_data                       \
+-O analyse/nanoplot
+
+```
+
+![Figure 3: NanoPlot summary statistics on SW.fastq.gz.](misc/SW_nanoplot_summary.PNG)
+
+<br>Whereas FastQC analysis is focused on average score differences depending on basecall location in the reads, the NanoPlot summary statistics table gives insight into the quality of the reads in relation to their lengths. Important are the following details:
+<br>1. Mean read quality: The mean quality of the complete ditch water data is 10.8. A higher average was expected based on the FastQC sequence quality graph, however this discrepancy suggests that the 'binning' of the boxplots kept more low quality reads hidden between basecall 9 and 3000.
+<br>2. Quality cutoffs: this shows which portion of the total number of reads falls above the specified quality cutoff. In this case, 100% of the reads have quality scores of Q>7, while 82.5% have Q>10. This indicates data manipulation based on minimum Phred-scores, with a cutoff somewhere between 7 and 10.
+<br>3. Read length N50: if all reads are sorted on length, this statistic shows the length of the shortest read which, together with the sum of the longer reads, contains 50% of all bases in the inputdata. While NanoPore is designed for generating longer reads, the N50 does not necessarily count as a relevant metric to assess data quality (Ayling et al, 2020).
+
+<br><br><br>
+
+![Figure 4: NanoPlot read lengths vs average read quality plot on SW.fastq.gz.](misc/SW_nanoplot_length-quality.PNG)
+
+<br>This graph shows no discernable correlation between read quality and read length. It was expected to show shorter reads with lower quality, and longer reads with higher quality. What it does show is that there is indeed an arbitrary quality cutoff between 7 and 10 (approximately >8). 
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Taxonomy
+
+### Kraken2 classification
+
+Before the data is further edited based on quality control, it is important to see the final results on the unedited data first, otherwise there is no reference for the edited data later. In this section, the raw data (SW.fastq.gz) will be used as input for taxonomic analysis. Taxonomy will be done using the Kraken2 tool, which uses *k*-mer analysis from large genome databases in order to assign reads to specific species. The reference genome databases can be quite large, which is why there are various smaller databases available which require less processing power and disk space. This comes with the drawback that more reads end up labeled as unclassified. For this project, the *kraken2_classifier.sh* script is written in such a way that it allows the user to choose which database should be used. The script can be executed as follows:
+
+```{bash Kraken2, eacho=TRUE, eval=FALSE}
+
+# print the Kraken2 tool description (optional):
+
+kraken2 -h
+
+# print the kraken2_classifier.sh script function and usage (optional):
+
+bash scripts/kraken2_classifier.sh -h
+
+# execute the script with proper flags:
+
+bash scripts/kraken2_classifier.sh \
+-i raw_data/SW.fastq.gz            \ 
+-O analyse/kraken2/SW_8gb
+
+# to follow along with this RMarkdown example, choose **'1'** when prompted to use the 8GB mini-kraken database.
+
+# move the downloaded database to the reference folder to keep files structured:
+
+mv analyse/kraken2/SW_8gb/kraken2_db referentie
+
+```
+
+<br>The script will save the results to the newly made analyse/kraken2 folder. The "SW.report" file shows the complete taxonomy of all reads in the input file, with representation in percentages (%) in the first column. The overall percentages of classified and unclassified ("U") reads can be seen in the first two lines of this document. 
+
+```{bash kraken2 cat, echo=TRUE, eval=TRUE}
+
+cat analyse/kraken2/SW_8gb/SW.report | head -n2
+
+```
+
+<br>Before continuing, check whether the sample was contaminated by human DNA:
+
+```{bash kraken2 human reads check, echo=TRUE, eval=TRUE}
+
+# human reads will appear as classifications under 'Homo sapiens' in the kraken2 report file. 
+# utilize the grep command to search the file:
+
+cat analyse/kraken2/SW_8gb/SW.report | grep sapiens
+
+```
+
+In this case, 4.62% of the classified reads were aligned to human reference using k-mer analysis through Kraken2. This is unexpected since this data is generated from ditch water, thus indicating handling errors during sample preparation. In other cases, such as metagenomic analysis of the human gut microbiome, human reads will always be present in high quantities. It is important to remove these reads to reduce analysis and processing time, and to prevent problems further in the pipeline, for example during result presentation. To remove the human reads, the data will be aligned to a human genome only, after which the matching reads will be treated as 'host' DNA and removed from the dataset.
+
+```{bash kraken2 human 'host' DNA removal, echo=TRUE, eval=FALSE}
+
+# first, create a human reference genome folder:
+
+mkdir -p referentie/kraken2_human_db
+
+# download the human reference genome library using the kraken2-build command:
+
+echo "y" | kraken2-build --download-library human --db referentie/kraken2_human_db/ --threads 4
+
+# download taxonomy data from NCBI:
+
+kraken2-build --download-taxonomy --db referentie/kraken2_human_db/
+
+# build database:
+
+kraken2-build --build --db referentie/kraken2_human_db/ --threads 4
+
+# clean intermediary files, reducing from 50 to 4 GB:
+
+kraken2-build --clean --db referentie/kraken2_human_db
+
+# Kraken2 classification on SW.fastq.gz with human reference (SW_rmhuman-reads.fq is the filtered output):
+
+kraken2 --db referentie/kraken2_human_db/         \
+        --threads 4                               \
+        --output SW_nh-out.txt                    \
+        --report SW_nh-report.txt                 \
+        --unclassified-out bewerkte_data/SW_nh.fq \
+        raw_data/SW.fastq.gz
+        
+# the terminal will show how many reads were classified i.e. mapped to the human genome, in this case:
+# 28959 sequences classified (3.10%)
+
+# zip the SW_nh.fq to save space:
+
+gzip bewerkte_data/SW_nh.fq
+
+# move SW_nh.fq.gz to the bewerkte_data folder to keep files structured:
+
+mv SW_nh.fq.gz bewerkte_data
+
+```
+
+<br>The filtered dataset (bewerkte_data/SW_nh.fq.gz) can be used as new input for the *kraken2_classifier.sh* script:
+
+```{bash Kraken2 -- human filtered, eacho=TRUE, eval=FALSE}
+
+# execute the script with proper flags:
+
+bash scripts/kraken2_classifier.sh \
+-i bewerkte_data/SW_nh.fq.gz       \ 
+-O analyse/kraken2/SW_nh_8gb
+
+# choose **'5'** when promted, then refer to the already existing 8GB mini-kraken reference database by entering its absolute path: **~/Metagen_SW/referentie/kraken2_db**
+
+### *** maar een deel van de human reads verwijderd op deze manier *** ###
+
+```
+
+
