@@ -68,6 +68,16 @@ conda activate meta
 
 echo "y" | conda install [...]
 
+# create one more environment for NanoFilt analysis to avoid dependency issues (introduced later):
+
+conda create nanofilt_env
+conda activate nanofilt_env
+echo "y" | conda install NanoFilt
+
+# return to main environment:
+
+conda activate meta
+
 ```
 
 ### About scripts
@@ -106,13 +116,17 @@ rm raw_data/fastq*fastq.gz
 
 # check the combined file's format by viewing part of the first read:
 
-zcat raw_data/SW.fastq.gz | head -n4 | cut -c1-400
+zcat raw_data/SW.fastq.gz | head -n4 | cut -c1-300
 
 # it should look like this:
 
 ```
 
-The first line in the read shows the metadata, specifically the type of sequencing experiment the data originates from (in this case DNA-sequencing with R9.4.1 ONT MinION flow-cells). 
+Each 4 lines in fastq represent information for a single read:
+<br><br>Line 1: metadata from the sequencing experiment (in this case DNA-sequencing with R9.4.1 ONT MinION flow-cells);
+<br>Line 2: basecalls (A, C, G, T);
+<br>Line 3: separator ("+" symbol);
+<br>Line 4: Phred-quality scores in ASCII corresponding to basecalls.
 
 --------------------------------------------------
 --------------------------------------------------
@@ -169,12 +183,6 @@ bash scripts/fastq_nanoplotter.sh \
 -I raw_data                       \
 -O analyse/nanoplot
 
-# execute the script with proper flags:
-
-bash scripts/fastq_nanoplotter.sh \
--I raw_data                       \
--O analyse/nanoplot
-
 ```
 
 ![Figure 3: NanoPlot summary statistics on SW.fastq.gz.](misc/SW_nanoplot_summary.PNG)
@@ -193,13 +201,13 @@ bash scripts/fastq_nanoplotter.sh \
 --------------------------------------------------
 --------------------------------------------------
 
-# Taxonomy
+# Taxonomy - unmodified classification
 
 ### Kraken2 classification
 
 Before the data is further edited based on quality control, it is important to see the final results on the unedited data first, otherwise there is no reference for the edited data later. In this section, the raw data (SW.fastq.gz) will be used as input for taxonomic analysis. Taxonomy will be done using the Kraken2 tool, which uses *k*-mer analysis from large genome databases in order to assign reads to specific species. The reference genome databases can be quite large, which is why there are various smaller databases available which require less processing power and disk space. This comes with the drawback that more reads end up labeled as unclassified. For this project, the *kraken2_classifier.sh* script is written in such a way that it allows the user to choose which database should be used. The script can be executed as follows:
 
-```{bash Kraken2, eacho=TRUE, eval=FALSE}
+```{bash Kraken2 08gb, eacho=TRUE, eval=FALSE}
 
 # print the Kraken2 tool description (optional):
 
@@ -209,99 +217,114 @@ kraken2 -h
 
 bash scripts/kraken2_classifier.sh -h
 
-# execute the script with proper flags:
+# execute the script with proper flags (use a clear and descriptive output directory name, in this case "SW_08"):
 
 bash scripts/kraken2_classifier.sh \
 -i raw_data/SW.fastq.gz            \ 
--O analyse/kraken2/SW_8gb
+-O analyse/kraken2/SW_08
 
 # to follow along with this RMarkdown example, choose **'1'** when prompted to use the 8GB mini-kraken database.
 
-# move the downloaded database to the reference folder to keep files structured:
+# move the downloaded database to the reference folder and rename to keep files structured:
 
-mv analyse/kraken2/SW_8gb/kraken2_db referentie
+mv analyse/kraken2/SW_08/kraken2_db referentie
+mv referentie/kraken2_db referentie/kraken2_db_08gb
 
 ```
 
 <br>The script will save the results to the newly made analyse/kraken2 folder. The "SW.report" file shows the complete taxonomy of all reads in the input file, with representation in percentages (%) in the first column. The overall percentages of classified and unclassified ("U") reads can be seen in the first two lines of this document. 
 
-```{bash kraken2 cat, echo=TRUE, eval=TRUE}
+```{bash kraken2 08gb cat, echo=TRUE, eval=TRUE}
 
-cat analyse/kraken2/SW_8gb/SW.report | head -n2
-
-```
-
-<br>Before continuing, check whether the sample was contaminated by human DNA:
-
-```{bash kraken2 human reads check, echo=TRUE, eval=TRUE}
-
-# human reads will appear as classifications under 'Homo sapiens' in the kraken2 report file. 
-# utilize the grep command to search the file:
-
-cat analyse/kraken2/SW_8gb/SW.report | grep sapiens
+cat analyse/kraken2/SW_08/SW_08.report | head -n2
 
 ```
 
-In this case, 4.62% of the classified reads were aligned to human reference using k-mer analysis through Kraken2. This is unexpected since this data is generated from ditch water, thus indicating handling errors during sample preparation. In other cases, such as metagenomic analysis of the human gut microbiome, human reads will always be present in high quantities. It is important to remove these reads to reduce analysis and processing time, and to prevent problems further in the pipeline, for example during result presentation. To remove the human reads, the data will be aligned to a human genome only, after which the matching reads will be treated as 'host' DNA and removed from the dataset.
+The k-mer analysis could identify 20.60% of the reads. The input for this analysis was the complete raw dataset without data manipulation (except probably >8 Phred-score cutoff) or any other form of filtering. To increase the rate if identification is to increase the efficacy of this pipeline -- therefore the adjustment of certain key parameters must be explored to increase the rate of taxonomic classification of the metagenomic samples. The following options will thus be tested:
+<br><br>1: expand the Kraken2 reference database in order to identify more reads originating from microbes not represented by the 8GB mini-database;
+<br>2: increase the minimum Phred-quality score threshold (above 8);
+<br>3: adjust Kraken2 sensitivity parameters using the --confidence option;
+<br>4: introduce targeted ONT-adapter trimming;
+<br>5: filter on read length.
+<br><br>Classification rates from before and after these parameter adjustments will be compared. 
 
-```{bash kraken2 human 'host' DNA removal, echo=TRUE, eval=FALSE}
+--------------------------------------------------
+--------------------------------------------------
 
-# first, create a human reference genome folder:
+# Taxonomy - parameter adjustments
 
-mkdir -p referentie/kraken2_human_db
+### 1: expand the Kraken2 reference database
 
-# download the human reference genome library using the kraken2-build command:
+As a first step, the *kraken2_classifier.sh* script will rerun using a larger reference database, from 8gb to 16gb. The script is run similarly to the previous run:
 
-echo "y" | kraken2-build --download-library human --db referentie/kraken2_human_db/ --threads 4
+```{bash Kraken2 16gb, echo=TRUE, eval=FALSE}
 
-# download taxonomy data from NCBI:
+# run the kraken2 script but choose the 16gb reference database (use a clear and descriptive output directory name, in this case "SW_16"):
 
-kraken2-build --download-taxonomy --db referentie/kraken2_human_db/
+bash scripts/kraken2_classifier.sh -i raw_data/SW.fastq.gz -O analyse/kraken2/SW_16
 
-# build database:
+# choose option **'2'** to download and use the 16gb reference database.
 
-kraken2-build --build --db referentie/kraken2_human_db/ --threads 4
+# once the taxonomic analysis is finisched, move the downloaded database to the reference folder and rename the file:
 
-# clean intermediary files, reducing from 50 to 4 GB:
-
-kraken2-build --clean --db referentie/kraken2_human_db
-
-# Kraken2 classification on SW.fastq.gz with human reference (SW_rmhuman-reads.fq is the filtered output):
-
-kraken2 --db referentie/kraken2_human_db/         \
-        --threads 4                               \
-        --output SW_nh-out.txt                    \
-        --report SW_nh-report.txt                 \
-        --unclassified-out bewerkte_data/SW_nh.fq \
-        raw_data/SW.fastq.gz
-        
-# the terminal will show how many reads were classified i.e. mapped to the human genome, in this case:
-# 28959 sequences classified (3.10%)
-
-# zip the SW_nh.fq to save space:
-
-gzip bewerkte_data/SW_nh.fq
-
-# move SW_nh.fq.gz to the bewerkte_data folder to keep files structured:
-
-mv SW_nh.fq.gz bewerkte_data
+mv analyse/kraken2/SW_16/kraken2_db referentie
+mv referentie/kraken2_db referentie/kraken2_db_16gb
 
 ```
 
-<br>The filtered dataset (bewerkte_data/SW_nh.fq.gz) can be used as new input for the *kraken2_classifier.sh* script:
+<br>View the the first two lines (with the overall classification rates) of the new analysis:
 
-```{bash Kraken2 -- human filtered, eacho=TRUE, eval=FALSE}
+```{bash Kraken2 08gb cat, echo=TRUE, eval=TRUE}
 
-# execute the script with proper flags:
-
-bash scripts/kraken2_classifier.sh \
--i bewerkte_data/SW_nh.fq.gz       \ 
--O analyse/kraken2/SW_nh_8gb
-
-# choose **'5'** when promted, then refer to the already existing 8GB mini-kraken reference database by entering its absolute path: **~/Metagen_SW/referentie/kraken2_db**
-
-### *** maar een deel van de human reads verwijderd op deze manier *** ###
+cat analyse/kraken2/SW_16/SW_16.report | head -n2
 
 ```
 
+<br>Using the larger reference database, the rate of classification has increased from 20.60% to 29.90%. This shows that using a larger database allows the k-mer analysis to match more of the previously unclassified reads to known species, as expected. It is therefore recommended to use larger references for taxonomic classification. These databases do however take up a lot of space and it is recommended to check the server capacity before choosing to download a larger database.
+
+### 2: increase the minimum Phred-quality score threshold
+
+Reads with low quality scores that cannot be confidently classified by Kraken2 remain unclassified after k-mer analysis (this also depends on Kraken2 confidence threshold discussed later). To filter reads on minimum average quality, the NanoFilt tool is used which can accept fastq.gz files and filter out low quality reads. The threshold can be provided by the user as follows.
+
+```{bash NanoFilt Q10, echo=TRUE, eval=FALSE}
+
+# activate conda environment with NanoFilt:
+
+conda activate nanofilt_env
+
+# run nanofilt_qfilter script:
+
+bash scripts/nanofilt_qfilter.sh \
+-i raw_data/SW.fastq.gz          \
+-O bewerkte_data/SW_Q10
+
+# when prompted, enter "10" to filter reads on a minimum average Phred-score of 10.
+
+# return to main environment:
+
+conda activate meta
+
+```
+
+<br>In this case, the fastq file has reduced in size from 3.3 tot 2.7 GB indicating substantial read filtering. To check whether the reads have been properly filtered, run the NanoPlot script using the new dataset as input:
+
+```{bash NanoPlot Q10, echo=TRUE, eval=FALSE}
+
+# execute fastq_nanoplotter.sh on new Q>10 dataset:
+
+bash scripts/fastq_nanoplotter.sh \
+-I bewerkte_data/SW_Q10           \
+-O analyse/nanoplot
+
+# compare the results (analyse/nanoplot/) before and after >Q10 filtering.
+
+```
+
+<br>According to the NanoPlot summary, filtering out 253220 reads (932671-679451) has raised the mean read quality from 10.8 to 11.5, with 100% of reads >Q10. The new read length vs read quality plot supports the >Q10 cutoff.
+
+![Figure 5: NanoPlot read lengths vs average read quality plot on SW_Q10.fastq.gz.](misc/SW_Q10_nanoplot_length-quality.PNG)
+
+<br><br>Repeat Kraken2 analysis using *kraken2_classifier.sh*, with the 16gb reference database and output to analyse/kraken2/SW_Q[..]. Then repeat the *NanoFilt > Kraken2 > NanoPlot* analysis for Q>12, Q>16 and Q>20. The results of these different runs are presented in *table 1*.<br><br> 
+
+![Table 1: Results of different test runs using different reference databases and gradually increasing the minimum average Phred-score requirement. Adjustments with regards to the preceding run are represented in blue. Run 3 with 16 gb reference database and Q>10 filtering resulted in 30.09% classification rates while maintaining a high number of reads in the dataset, as opposed to runs 4, 5 and 6 which have 393488, 1861 and 1 reads respectively.](misc/Testruns_1.PNG)
 
