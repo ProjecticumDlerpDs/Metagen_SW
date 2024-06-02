@@ -75,12 +75,12 @@ fi
 ## step 4.1: database selection:
 
 echo -e "\nSelect which Kraken2 reference database to use:"
-  echo "1: (8 GB)  Standard database mini"
-  echo "2: (16 GB) Standard database small"
-  echo "3: (72 GB) Standard database \complete"
-  echo "4: (<1 GB) Viral database"
-  echo -e "5: Skip downloading and refer to already existing database instead\n"
-read -p "Enter the number of desired reference database:" db
+echo "1: (8 GB)  Standard database mini"
+echo "2: (16 GB) Standard database small"
+echo "3: (72 GB) Standard database complete"
+echo "4: (<1 GB) Viral database"
+echo -e "5: Skip downloading and refer to already existing database instead\n"
+read -p "Enter the number of desired reference database: " db
 
 
 ## step 4.2: download database
@@ -125,9 +125,9 @@ fi
 
 kraken2_db="$db_dir"
 
-base_filename=$(basename "$infile")
-outfile="$outdir/${base_filename%.fastq.gz}.kraken"
-repfile="$outdir/${base_filename%.fastq.gz}.report"
+base_filename=$(basename "$outdir")
+outfile="$outdir/${base_filename}.kraken"
+repfile="$outdir/${base_filename}.report"
 
 
 ## step 6: Kraken2 taxonomic classification:
