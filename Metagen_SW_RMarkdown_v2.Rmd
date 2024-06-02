@@ -234,7 +234,7 @@ mv referentie/kraken2_db referentie/kraken2_db_08gb
 
 <br>The script will save the results to the newly made analyse/kraken2 folder. The "SW.report" file shows the complete taxonomy of all reads in the input file, with representation in percentages (%) in the first column. The overall percentages of classified and unclassified ("U") reads can be seen in the first two lines of this document. 
 
-```{bash kraken2 08gb cat, echo=TRUE, eval=TRUE}
+```{bash Kraken2 08gb cat, echo=TRUE, eval=TRUE}
 
 cat analyse/kraken2/SW_08/SW_08.report | head -n2
 
@@ -244,8 +244,7 @@ The k-mer analysis could identify 20.60% of the reads. The input for this analys
 <br><br>1: expand the Kraken2 reference database in order to identify more reads originating from microbes not represented by the 8GB mini-database;
 <br>2: increase the minimum Phred-quality score threshold (above 8);
 <br>3: introduce targeted ONT-adapter trimming;
-<br>4: filter on read length;
-<br>5: adjust Kraken2 sensitivity parameters using the --confidence option.
+<br>4: filter on read length.
 <br><br>Classification rates from before and after these parameter adjustments will be compared. 
 
 --------------------------------------------------
@@ -274,7 +273,7 @@ mv referentie/kraken2_db referentie/kraken2_db_16gb
 
 <br>View the the first two lines (with the overall classification rates) of the new analysis:
 
-```{bash Kraken2 08gb cat, echo=TRUE, eval=TRUE}
+```{bash Kraken2 16gb cat, echo=TRUE, eval=TRUE}
 
 cat analyse/kraken2/SW_16/SW_16.report | head -n2
 
@@ -328,3 +327,158 @@ bash scripts/fastq_nanoplotter.sh \
 
 ![Table 1: Results of different test runs using different reference databases and gradually increasing the minimum average Phred-score requirement. Adjustments with regards to the preceding run are represented in blue. Run 3 with 16 gb reference database and Q>10 filtering resulted in 30.09% classification rates while maintaining a high number of reads in the dataset, as opposed to runs 4, 5 and 6 which have 393488, 1861 and 1 reads respectively.](misc/Testruns_1.PNG)
 
+### 3: ONT-adapter trimming
+
+<br>The next option to improve Kraken2 output is to detect and remove specific ONT adapters that may have been used in sample preparation. In the SW case, there is no documentation available with regards to adapter sequences. The **Porechop** tool uses a library of known ONT adapter sequences and once found, trims these off the sequences in an attempt to raise the average quality of the read and thus make taxonomic classification more reliable. Porechop can be used as follows:
+
+```{bash Porechop adapter trimming, echo-TRUE, eval=FALSE}
+
+# print the Porechop description (optional):
+
+porechop -h
+
+# execute Porechop with proper flags, using the SW_Q10 as input:
+
+porechop                                      \
+-i bewerkte_data/SW_Q10/SW_Q10.fastq.gz       \
+-o bewerkte_data/SW_Q10_PC/SW_Q10_PC.fastq.gz
+
+```
+
+<br>Porechop progress can be viewed in the terminal while the tool is running. In this particular case, at least 655450 out of 769451 reads have been edited by Porechop:
+
+![<br>Figure 6: Terminal information from Porechop analysis on  SW_Q10.fastq.gz. The resulting trimmed file is saved as bewerkte_data/SW_Q10_PC/SW_Q10_PC.fastq.gz.](misc/SW_Q10_PC_Terminal.PNG)
+
+<br>Since many reads have been trimmed, it is important to check whether there are not too many short reads in the new dataset. Use FastQC to check the read lengths:
+
+```{bash FastQC SW_Q10_PC, echo=TRUE, eval=FALSE}
+
+# run the fastqc_reporter script on SW_Q10_PC:
+
+bash scripts/fastqc_reporter.sh \
+-I bewerkte_data/SW_Q10_PC      \
+-O analyse/fastqc
+
+```
+
+![<br>Figure 7: FastQC summary and per base sequence quality on SW_Q10_PC.fastq.gz. The quality graph shows good average quality scores throughout the reads. Surprisingly, the boxplots are on average much higher than the Q>10 cutoff (around Q18). Besides, the Porechop adapter trimming has caused at least one read to be of length '1' according to the summary table, suggesting the reads should be filtered on minimum length after using Porechop.](misc/SW_Q10_PC_fastqc.PNG)
+
+<br>To double-check the surprising quality results, another NanoPlot analysis is done on this subset:
+
+```{bash NanoPlot SW_Q10_PC, echo=TRUE, eval=FALSE}
+
+# run the fastq_nanoplotter.sh script on SW_Q10_PC:
+
+bash scripts/fastq_nanoplotter.sh \
+-I bewerkte_data/SW_Q10_PC        \
+-O analyse/nanoplot
+
+```
+
+![<br>Figure 8: NanoPlot summary statistics on SW_Q10_PC.fastq.gz.](misc/SW_Q10_PC_nanoplot.PNG)
+
+<br>The nanoplot summary shows that the quality boxplots in the FastQC report are deceptive. The very high quality scores as seen in 'Top 5 highest mean basecall quality scores and their read lengths' each correspond to very short reads (6-65 bases).
+
+The Kraken2 analysis on this data shows classification rates comparable to the Q>10 data without adapter filtering with Porechop. However it is still recommended to trim known adapter sequences (from ONT, depending on experimental design) as these subsequences are non-relevant data for most experiments.
+
+### 4: filtering on read length
+
+To remedy the problem of very short reads, the data can be filtered on minimum read length. Nanopore is designed to generate long sequences, and with relatively low quality scores compared to Illumina, very short Nanopore reads can easily be misidentified during *k*-mer analysis. The NanoFilt tool can be used for this purpose, too.  
+
+```{bash NanoFilt read lengths, echo=TRUE, eval=FALSE}
+
+# activate conda environment with NanoFilt:
+
+conda activate nanofilt_env
+
+# run nanofilt_lfilter script:
+
+bash scripts/nanofilt_lfilter.sh              \
+-i bewerkte_data/SW_Q10_PC/SW_Q10_PC.fastq.gz \
+-O bewerkte_data/SW_Q10_PC_L
+
+# when prompted, enter "1000" for minimum read length. 
+# press enter for maximum read length to skip that option.
+
+# return to main environment:
+
+conda activate meta
+
+```
+
+<br>Kraken2 analysis on this subset, with minimum read lengths of 1000 bases, shows an increase in classification rates:
+
+```{bash Kraken2 SW_Q10_PC_L1000, echo=TRUE, eval=TRUE}
+
+cat analyse/kraken2/SW_Q10_PC_L/SW_Q10_PC_L1000.report | head -n2
+
+```
+
+<br>This process can be repeated any number of times to generate new subsets with different read length requirements. For testing purposes, different minimum and maximum length requirements will be combined, and the output of each will be used as input for Kraken2. To get an understanding of which min-max parameters are worth testing while retaining a relevant amount of reads, the read length histogram from the NanoPlot analysis on SW_Q10_PC can be used.
+
+![<br>Figure 9: NanoPlot read length histogram on SW_Q10_PC.fastq.gz. This graph shows that it is, for instance, not worth filtering reads on minimum length requirements of 20.000 bases.](misc/SW_Q10_PC_lengths.PNG)
+
+<br>After testing multiple combinations, these are the results:
+
+![<br>Table 2: Kraken2 classification rates after filtering based on read length. All rounds used SW_Q10_PC.fastq.gz as input. The earlier testruns are left out of this table as the focus currently lies on the length variables.](misc/Testruns_2.PNG)
+
+<br>These results show that higher minimum length requirements generate subsets with higher rates of classification using *k*-mer analysis. The maximum length limit does not appear to increase classification. For the purposes of this pipeline, the subset SW_Q10_PC_minL5000 will be used for downstream analysis, as this subset has a relatively high percentage of classified reads (50.42%) while retaining 218532 reads, as opposed to SW_Q10_PC_minL10000 which has 69.96% classified but only retained 9491 reads.
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Abundance estimation
+
+To give a better representation of the actual microbial composition of the sample, the Kraken2 output is used as input for the Bracken tool, which re-estimates species abundances using Bayesian .
+
+```{bash Bracken abundance estimation, echo=TRUE, eval=FALSE}
+
+# print the bracken_estimator.sh script function and usage (optional):
+
+bash scripts/bracken_estimator.sh -h
+
+# execute bracken_estimator.sh with proper flags:
+
+bash scripts/bracken_estimator.sh                         \
+-i analyse/kraken2/SW_Q10_PC_L5000/SW_Q10_PC_L5000.report \
+-O analyse/bracken/SW_Q10_PC_L5000                        \
+-d referentie/kraken2_db_16gb/
+
+```
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Visualization of microbial composition
+
+Finally, the Bracken results can be used as input for the *Krona* tool for visualizing metagenomic data results. The Krona tool can be utilized as follows:
+
+```{bash Krona visualization, echo=TRUE, eval=FALSE}
+
+# print the krona_visualizer.sh script function and usage (optional):
+
+bash scripts/krona_visualizer.sh -h
+
+# use the krona_visualizer.sh script to create a Krona taxonomy chart:
+
+bash scripts/krona_visualizer.sh -i analyse/bracken/SW_Q10_PC_L5000/SW_Q10_PC_L5000
+
+```
+
+<br>The graph is interactive and can be studied to find specific species and their abundance in the environment at the time the original metagenomic samples were abstracted. This is purely a visual aid -- any particular species of interest can also searched for using ctrl+F in the bracken report file (analyse/bracken/SW_Q10_PC_L5000/SW_Q10_PC_L5000_bracken_species.report).
+
+![<br>Figure 10: Krona chart visualizing the Bracken output of SW_10_PC_L5000.](misc/SW_Q10_PC_L5000_krona.PNG)
+
+<br>Note that in this case, a large portion (25%) of the sample consists of human DNA ('*Homo sapiens*'). This indicates contamination of the samples with human DNA, which should be taken into consideration when forming conclusions based on this data, because certain bacterial or viral classifications may also have been introduced through this contamination -- passed on from human skin, sweat, et cetera to the samples during preparation or sequencing. Note that for samples originating from the human gut, for example, a large amount of human host DNA is expected and should not necessarily be regarded as contamination, but as a byproduct of experimental design.
+
+Since the graph is interactive, clicking on the 'Bacteria' tag on the innermost circle shifts the graph to only show bacterial classifications. The same works for other taxa, so that a selection can be presented based research purposes and questions.
+
+![<br>Figure 11: The same data as figure 10 but with only bacteria selected.](misc/SW_Q10_PC_L5000_bact_krona.PNG)
+
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Pipeline overview and conclusions
+
+This pipeline has been created for analyzing microbial composition in metagenomic samples. It has been written for users with limited to no scripting or command line experience. The pipeline includes directory and conda environment setups, raw data selection, quality control, data manipulation based on intermediate results, taxonomic classification, and visualization.
