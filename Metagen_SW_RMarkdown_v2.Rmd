@@ -243,9 +243,9 @@ cat analyse/kraken2/SW_08/SW_08.report | head -n2
 The k-mer analysis could identify 20.60% of the reads. The input for this analysis was the complete raw dataset without data manipulation (except probably >8 Phred-score cutoff) or any other form of filtering. To increase the rate if identification is to increase the efficacy of this pipeline -- therefore the adjustment of certain key parameters must be explored to increase the rate of taxonomic classification of the metagenomic samples. The following options will thus be tested:
 <br><br>1: expand the Kraken2 reference database in order to identify more reads originating from microbes not represented by the 8GB mini-database;
 <br>2: increase the minimum Phred-quality score threshold (above 8);
-<br>3: adjust Kraken2 sensitivity parameters using the --confidence option;
-<br>4: introduce targeted ONT-adapter trimming;
-<br>5: filter on read length.
+<br>3: introduce targeted ONT-adapter trimming;
+<br>4: filter on read length;
+<br>5: adjust Kraken2 sensitivity parameters using the --confidence option.
 <br><br>Classification rates from before and after these parameter adjustments will be compared. 
 
 --------------------------------------------------
