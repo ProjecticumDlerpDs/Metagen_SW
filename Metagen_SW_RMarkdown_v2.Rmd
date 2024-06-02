@@ -475,10 +475,15 @@ Since the graph is interactive, clicking on the 'Bacteria' tag on the innermost 
 
 ![<br>Figure 11: The same data as figure 10 but with only bacteria selected.](misc/SW_Q10_PC_L5000_bact_krona.PNG)
 
-
 --------------------------------------------------
 --------------------------------------------------
 
 # Pipeline overview and conclusions
 
 This pipeline has been created for analyzing microbial composition in metagenomic samples. It has been written for users with limited to no scripting or command line experience. The pipeline includes directory and conda environment setups, raw data selection, quality control, data manipulation based on intermediate results, taxonomic classification, and visualization.
+
+--------------------------------------------------
+--------------------------------------------------
+
+# Considerations and future improvements
+
