@@ -6,7 +6,9 @@
 
 -----------------------------
 #   Contents:
-<br><br>1: Introduction
+
+
+1: Introduction
 <br>1.1: Requirements
 <br>2: Raw data origin
 <br>3: Initial QC
@@ -36,7 +38,8 @@ This pipeline is designed for analyzing Next-Generation Sequencing data. The raw
 
 
 The following packages must be present in your Conda environment for the pipeline to function:
-<br><br>bracken
+
+bracken
 <br>fastqc
 <br>kraken2
 <br>krona
@@ -44,7 +47,8 @@ The following packages must be present in your Conda environment for the pipelin
 <br>porechop
 
 To avoid dependency issues, create a separate environment with the following packages:
-<br><br>libstdcxx-devel_linux-64
+
+libstdcxx-devel_linux-64
 <br>nanofilt
 
 
