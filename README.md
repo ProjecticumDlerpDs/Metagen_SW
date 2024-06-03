@@ -130,6 +130,7 @@ porechop \
 -i path/to/fastq.gz/file \
 -o path/to/output/filename.fastq.gz/file
 
+(https://github.com/rrwick/Porechop)
 
 -----------------------------
 ##  Part 5.2: Filtering on Q-score
