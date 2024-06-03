@@ -164,6 +164,8 @@ bash bracken_estimator.sh \
 -O path/to/output/directory \
 -d path/to/reference/database
 
+(https://github.com/jenniferlu717/Bracken)
+
 Make sure to use the same reference database as the one used for the Kraken2 analysis. The output file (*bracken_species.report) can be analyzed to find species of interest and their estimated abundances in the metagenomic samples at the time and place of their extraction.
 
 
@@ -173,7 +175,17 @@ Make sure to use the same reference database as the one used for the Kraken2 ana
 
 This pipeline visualizes the data using Krona graphs, as these are interactive and can be 'zoomed in' to provide more visual information on the species level. A Krona graph can be made using the krona_visualizer.sh script:
 
+https://github.com/marbl/Krona
+
 bash krona_visualizer.sh \
 -i path/to/bracken/*_species.report \
 -O path/to/output/directory
 
+
+=============================
+#   Part 9: Validation
+=============================
+
+If desired, the pipeline can be tested in two ways: 
+1: Positive control: use genomic data of a known species as input which is then classified using a reference database containing the genome for that species, expecting most or all reads to be classified and attributed to that species;
+2: Negative control: use genomic data of a known species as input that does certainly not appear in the chosen reference database, expecting zero classified reads.
