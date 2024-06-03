@@ -1,8 +1,26 @@
 # README_Metagen_SW
 
 # DLERPDS Metagenomics data analysis pipeline v2
-# By Moreno Serafino
+### By Moreno Serafino
 
+
+-----------------------------
+#   Contents:
+<br><br>1: Introduction
+<br>1.1: Requirements
+<br>2: Raw data origin
+<br>3: Initial QC
+<br>3.1: FastQC
+<br>3.2: NanoPlot
+<br>4: Taxonomy on raw data
+<br>5: Data manipulation
+<br>5.1: ONT-adapter trimming
+<br>5.2: Filtering on Q-scores
+<br>5.3: Filtering on read length
+<br>6: Taxonomy on trimmed and filtered data
+<br>7: Abundance estimation
+<br>8: Visualization
+<br>9: Validation
 
 -----------------------------
 #   Part 1: Introduction
@@ -18,16 +36,16 @@ This pipeline is designed for analyzing Next-Generation Sequencing data. The raw
 
 
 The following packages must be present in your Conda environment for the pipeline to function:
-  <br>bracken
-  <br>fastqc
-  <br>kraken2
-  <br>krona
-  <br>nanoplot
-  <br>porechop
+<br><br>bracken
+<br>fastqc
+<br>kraken2
+<br>krona
+<br>nanoplot
+<br>porechop
 
 To avoid dependency issues, create a separate environment with the following packages:
-  <br>libstdcxx-devel_linux-64
-  <br>nanofilt
+<br><br>libstdcxx-devel_linux-64
+<br>nanofilt
 
 
 -----------------------------
@@ -184,5 +202,5 @@ bash krona_visualizer.sh \
 
 
 If desired, the pipeline can be tested in two ways: 
-1: Positive control: use genomic data of a known species as input which is then classified using a reference database containing the genome for that species, expecting most or all reads to be classified and attributed to that species;
-2: Negative control: use genomic data of a known species as input that does certainly not appear in the chosen reference database, expecting zero classified reads.
+<br>1: Positive control: use genomic data of a known species as input which is then classified using a reference database containing the genome for that species, expecting most or all reads to be classified and attributed to that species;
+<br>2: Negative control: use genomic data of a known species as input that does certainly not appear in the chosen reference database, expecting zero classified reads.
