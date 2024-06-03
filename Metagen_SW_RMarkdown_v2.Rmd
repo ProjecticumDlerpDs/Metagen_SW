@@ -18,15 +18,36 @@ knitr::opts_chunk$set(echo = TRUE)
 --------------------------------------------------
 --------------------------------------------------
 
-# Introduction
+# Contents
+
+<br>**Chapter 1**: Introduction
+<br>  1.1: Working directory setup
+<br>  1.2: Environment setup
+<br>  1.3: About scripts
+<br><br>**Chapter 2**: Selecting raw sequencing data for pipeline testing
+<br><br>**Chapter 3**: Initial quality control
+<br>  3.1: FastQC analysis on raw data
+<br>  3.2: NanoPlot analysis on raw data
+<br><br>**Chapter 4**: Taxonomy -- unmodified classification
+<br><br>**Chapter 5**: Taxonomy -- parameter adjustments
+<br>  5.1: Expanding the Kraken2 database
+<br>  5.2: Increasing the minimum Phred-quality score threshold
+<br>  5.3: ONT-adapter trimming
+<br>  5.4: Filtering on read length
+<br><br>**Chapter 6**: Abundance estimation
+<br><br>**Chapter 7**: Visualization of microbial composition
+<br><br>**Chapter 8**: Pipeline overview and conclusions 
+<br><br>**Chapter 9**: Considerations and improvements
+
+--------------------------------------------------
+--------------------------------------------------
+
+# 1: Introduction
 
 This pipeline is designed for analyzing Next-Generation Sequencing data. The raw data used for testing this pipeline originate from two separate ONT MinION long-read, single-end shotgun DNA-sequencing experiments on ditch water using R9.4.1 flow-cells, presented in fastq format. This Markdown document will therefore use the ditch water experiment data to guide the reader through the analysis pipeline. The point of this pipeline, however, is that data from other sequencing experiments, from various environments can be used as input. The final output of this pipeline will be a comprehensive and quality controlled overview of microbe composition found in the inputdata. This markdown document is aimed at people with limited to zero command line experience.
 
-### Contents
 
-[inhoudsopgave]
-
-### Working directory setup
+### 1.1: Working directory setup
 
 To follow along with this analysis pipeline, it is important to follow the same folder hierarchy. Create the (empty) folders in the home-folder, and select the future working directory as follows:
 
@@ -46,7 +67,7 @@ cd Metagen_SW
 
 ```
 
-### Environment setup
+### 1.2: Environment setup
 
 To properly run this pipeline, a number of 'packages' needs to be installed first. These packages are available online and contain the code necessary to execute most downstream scripts and commands. The 'conda' package management system is used to install these packages to a specific 'conda environment', which will help avoid possible conflicts with other programs present on the server. In this case, the 'meta' conda environment is created and configured as follows:
 
@@ -66,13 +87,20 @@ conda activate meta
 
 # install all packages necessary for downstream scripts and commands; again 'echo "y"' to confirm installation:
 
-echo "y" | conda install [...]
+echo "y" | conda install bracken
+echo "y" | conda install fastqc
+echo "y" | conda install kraken2
+echo "y" | conda install krona
+echo "y" | conda install nanoplot
+echo "y" | conda install porechop
 
 # create one more environment for NanoFilt analysis to avoid dependency issues (introduced later):
 
 conda create nanofilt_env
 conda activate nanofilt_env
-echo "y" | conda install NanoFilt
+
+echo "y" | conda install libstdcxx-devel_linux-64
+echo "y" | conda install nanofilt
 
 # return to main environment:
 
@@ -80,14 +108,14 @@ conda activate meta
 
 ```
 
-### About scripts
+### 1.3: About scripts
 
 The next section contains the first bash script. These scripts can simply be run from the terminal. However, most scripts need to know where to find their input data, and where to store their output file(s), among other variables. The scripts are designed so that the user may provide these variables as options. Use **bash [script_name.sh] -h** to print an overview of a script's function and usage. This works for all bash scripts down the line.
 
 --------------------------------------------------
 --------------------------------------------------
 
-# Selecting raw sequencing data for pipeline testing
+# 2: Selecting raw sequencing data for pipeline testing
 
 The raw data from the ditch water project can be found on the HU server: /home/data/projecticum/SW/raw_data. There are 288 separate fastq files, which are copied from the server and concatenated (combined) into one fastq file:
 
@@ -131,9 +159,9 @@ Each 4 lines in fastq represent information for a single read:
 --------------------------------------------------
 --------------------------------------------------
 
-# Initial quality control
+# 3: Initial quality control
 
-### FastQC analysis on raw data
+### 3.1: FastQC analysis on raw data
 
 The FastQC tool will be used to get a quick qualitative overview using the basecall-linked Phred-scores in the dataset. The *fastqc_reporter.sh* script takes fastq data, analyzes the quality scores and creates an html report. The report consists of a number of graphs that will be discussed further. The most important results will show average quality scores per base location in the input reads.
 
@@ -163,7 +191,7 @@ Open the html report by navigating to the output directory and viewing the html 
 
 ![Figure 2: FastQC on SW.fastq.gz showing read length distribution.](misc/SW_fastqc_lengths.PNG)
 
-### NanoPlot analysis on raw data
+### 3.2: NanoPlot analysis on raw data
 
 For finding possible correlations between read length and read quality, the NanoPlot tool can be used through the *fastq_nanoplotter.sh* script. The report gives summary statistics and plots with regards to quality scores.
 
@@ -201,9 +229,7 @@ bash scripts/fastq_nanoplotter.sh \
 --------------------------------------------------
 --------------------------------------------------
 
-# Taxonomy - unmodified classification
-
-### Kraken2 classification
+# 4: Taxonomy - unmodified classification
 
 Before the data is further edited based on quality control, it is important to see the final results on the unedited data first, otherwise there is no reference for the edited data later. In this section, the raw data (SW.fastq.gz) will be used as input for taxonomic analysis. Taxonomy will be done using the Kraken2 tool, which uses *k*-mer analysis from large genome databases in order to assign reads to specific species. The reference genome databases can be quite large, which is why there are various smaller databases available which require less processing power and disk space. This comes with the drawback that more reads end up labeled as unclassified. For this project, the *kraken2_classifier.sh* script is written in such a way that it allows the user to choose which database should be used. The script can be executed as follows:
 
@@ -250,9 +276,9 @@ The k-mer analysis could identify 20.60% of the reads. The input for this analys
 --------------------------------------------------
 --------------------------------------------------
 
-# Taxonomy - parameter adjustments
+# 5: Taxonomy - parameter adjustments
 
-### 1: expand the Kraken2 reference database
+### 5.1: expanding the Kraken2 reference database
 
 As a first step, the *kraken2_classifier.sh* script will rerun using a larger reference database, from 8gb to 16gb. The script is run similarly to the previous run:
 
@@ -281,7 +307,7 @@ cat analyse/kraken2/SW_16/SW_16.report | head -n2
 
 <br>Using the larger reference database, the rate of classification has increased from 20.60% to 29.90%. This shows that using a larger database allows the k-mer analysis to match more of the previously unclassified reads to known species, as expected. It is therefore recommended to use larger references for taxonomic classification. These databases do however take up a lot of space and it is recommended to check the server capacity before choosing to download a larger database.
 
-### 2: increase the minimum Phred-quality score threshold
+### 5.2: increasing the minimum Phred-quality score threshold
 
 Reads with low quality scores that cannot be confidently classified by Kraken2 remain unclassified after k-mer analysis (this also depends on Kraken2 confidence threshold discussed later). To filter reads on minimum average quality, the NanoFilt tool is used which can accept fastq.gz files and filter out low quality reads. The threshold can be provided by the user as follows.
 
@@ -327,7 +353,7 @@ bash scripts/fastq_nanoplotter.sh \
 
 ![Table 1: Results of different test runs using different reference databases and gradually increasing the minimum average Phred-score requirement. Adjustments with regards to the preceding run are represented in blue. Run 3 with 16 gb reference database and Q>10 filtering resulted in 30.09% classification rates while maintaining a high number of reads in the dataset, as opposed to runs 4, 5 and 6 which have 393488, 1861 and 1 reads respectively.](misc/Testruns_1.PNG)
 
-### 3: ONT-adapter trimming
+### 5.3: ONT-adapter trimming
 
 <br>The next option to improve Kraken2 output is to detect and remove specific ONT adapters that may have been used in sample preparation. In the SW case, there is no documentation available with regards to adapter sequences. The **Porechop** tool uses a library of known ONT adapter sequences and once found, trims these off the sequences in an attempt to raise the average quality of the read and thus make taxonomic classification more reliable. Porechop can be used as follows:
 
@@ -381,7 +407,7 @@ bash scripts/fastq_nanoplotter.sh \
 
 The Kraken2 analysis on this data shows classification rates comparable to the Q>10 data without adapter filtering with Porechop. However it is still recommended to trim known adapter sequences (from ONT, depending on experimental design) as these subsequences are non-relevant data for most experiments.
 
-### 4: filtering on read length
+### 5.4: filtering on read length
 
 To remedy the problem of very short reads, the data can be filtered on minimum read length. Nanopore is designed to generate long sequences, and with relatively low quality scores compared to Illumina, very short Nanopore reads can easily be misidentified during *k*-mer analysis. The NanoFilt tool can be used for this purpose, too.  
 
@@ -427,9 +453,9 @@ cat analyse/kraken2/SW_Q10_PC_L/SW_Q10_PC_L1000.report | head -n2
 --------------------------------------------------
 --------------------------------------------------
 
-# Abundance estimation
+# 6: Abundance estimation
 
-To give a better representation of the actual microbial composition of the sample, the Kraken2 output is used as input for the Bracken tool, which re-estimates species abundances using Bayesian .
+To give a better representation of the actual microbial composition of the sample, the Kraken2 output is used as input for the Bracken tool, which re-estimates species abundances using Bayesian algorithms.
 
 ```{bash Bracken abundance estimation, echo=TRUE, eval=FALSE}
 
@@ -449,7 +475,7 @@ bash scripts/bracken_estimator.sh                         \
 --------------------------------------------------
 --------------------------------------------------
 
-# Visualization of microbial composition
+# 7: Visualization of microbial composition
 
 Finally, the Bracken results can be used as input for the *Krona* tool for visualizing metagenomic data results. The Krona tool can be utilized as follows:
 
@@ -461,7 +487,9 @@ bash scripts/krona_visualizer.sh -h
 
 # use the krona_visualizer.sh script to create a Krona taxonomy chart:
 
-bash scripts/krona_visualizer.sh -i analyse/bracken/SW_Q10_PC_L5000/SW_Q10_PC_L5000
+bash scripts/krona_visualizer.sh \
+-i analyse/bracken/SW_Q10_PC_L5000/SW_Q10_PC_L5000_bracken_species.report \
+-O analyse/krona/SW_Q10_PC_L5000
 
 ```
 
@@ -478,12 +506,12 @@ Since the graph is interactive, clicking on the 'Bacteria' tag on the innermost 
 --------------------------------------------------
 --------------------------------------------------
 
-# Pipeline overview and conclusions
+# 8: Pipeline overview and conclusions
 
 This pipeline has been created for analyzing microbial composition in metagenomic samples. It has been written for users with limited to no scripting or command line experience. The pipeline includes directory and conda environment setups, raw data selection, quality control, data manipulation based on intermediate results, taxonomic classification, and visualization.
 
 --------------------------------------------------
 --------------------------------------------------
 
-# Considerations and future improvements
+# 9: Considerations and future improvements
 
