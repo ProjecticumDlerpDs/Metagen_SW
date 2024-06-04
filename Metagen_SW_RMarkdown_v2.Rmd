@@ -59,7 +59,7 @@ cd ~
 
 # create folder hierarchy:
 
-mkdir -p Metagen_SW/{analyse,bewerkte_data,raw_data,referentie,scripts}
+mkdir -p Metagen_SW/{analyse,bewerkte_data,control,raw_data,referentie,scripts}
 
 # navigate to the Metagen_SW directory, from which the rest of the pipeline will be executed:
 
@@ -93,6 +93,7 @@ echo "y" | conda install kraken2
 echo "y" | conda install krona
 echo "y" | conda install nanoplot
 echo "y" | conda install porechop
+echo "y" | conda install sra-tools
 
 # create one more environment for NanoFilt analysis to avoid dependency issues (introduced later):
 
@@ -506,12 +507,82 @@ Since the graph is interactive, clicking on the 'Bacteria' tag on the innermost 
 --------------------------------------------------
 --------------------------------------------------
 
-# 8: Pipeline overview and conclusions
+# 8: Validation
+
+A positive and a negative control will be supplied as input for this final pipeline. These tests must validate whether reads are correctly classified during Kraken2 analysis. The SW test data cannot be used for this purpose since it is only a test sample without a definitive hypothesis with regards to the microbial composition.
+
+### 8.1: Positive control
+
+The positive control will use genomic FASTQ data from Escherichia coli O157:H7. If the input consists of genomic data only from this strain, the Kraken2 report is expected to reflect this by classifying reads only as E. coli O157:H7 strain, or more generally as the E. coli species in the case of homologous sequences shared between strains. This species and strain is chosen as it is represented in the Krona chart, and included in the 16 Gb database. Besides, E. coli has multiple identified strains, so the results of this positive control might also give an indication of the pipeline's specificity during classification.
+
+
+Workflow positive control:
+
+1: Preparation:
+<br>1.1: NCBI https://www.ncbi.nlm.nih.gov/
+<br>1.2: select database: SRA
+<br>1.3: search "Escherichia coli O157:H7 nanopore"
+<br>1.4: choose "WGS of Escherichia coli O157" with SRX4347297
+<br>1.5: note run SRR7477813
+
+2: Get data:
+<br>2.1: fastq-dump SRR7477813
+<br>2.2: mv SRR7477813.fastq control
+<br>2.3: gzip control/SRR7477813.fastq
+
+3: Perform control:
+<br>3.1: raw fastqc
+<br>      bash scripts/fastqc_reporter.sh -I control -O analyse/fastqc/SRR7477813
+<br>3.2: raw nanoplot
+<br>      bash scripts/fastq_nanoplotter.sh -I control -O analyse/nanoplot/SRR7477813
+<br>3.3: unmodified taxonomy
+<br>      bash scripts/kraken2_classifier.sh -i control/SRR7477813.fastq.gz -O analyse/kraken2/SRR7477813 
+<br>      (option 5: referentie/kraken2_db_16gb)
+<br>3.4: data manipulation
+<br>      conda activate nanofilt_env
+<br>        bash scripts/nanofilt_qfilter.sh -i control/SRR7477813.fastq.gz -O control
+<br>        (option: Q>10)
+<br>      conda activate meta
+<br>        porechop -i control/SRR7477813_Q10/SRR7477813_Q10.fastq.gz -o control/SRR7477813_Q10_PC.fastq.gz
+<br>      conda activate nanofilt_env
+<br>        bash scripts/nanofilt_lfilter.sh -i control/SRR7477813_Q10/SRR7477813_Q10_PC.fastq.gz -O control
+<br>        (option: min 5000; max none)
+<br>      conda activate meta
+<br>3.5: new kraken
+<br>      bash scripts/kraken2_classifier.sh -i control/SRR7477813_Q10/SRR7477813_Q10_PC_L5000.fastq.gz -O analyse/kraken2/SRR7477813/SRR7477813_Q10_PC_L5000
+<br>3.6: bracken
+<br>      bash scripts/bracken_estimator.sh -i analyse/kraken2/SRR7477813_Q10_PC_L5000/SRR7477813_Q10_PC_L5000.report -O analyse/bracken/SRR7477813_Q10_PC_L5000 -d referentie/kraken2_db_16gb/
+<br>3.7: krona
+<br>      bash scripts/krona_visualizer.sh -i analyse/bracken/SRR7477813_Q10_PC_L5000/SRR7477813_Q10_PC_L5000_bracken_species.report -O analyse/krona/SRR7477813_Q10_PC_L5000
+
+
+Positive control results:
+
+Before data manipulation:
+<br>Classified 84.75%; 
+<br>E. coli (species) 43.47; 
+<br>E. coli O157:H7 (strain) 2.17% with many different subtypes.
+
+After data manipulation:
+<br>Classified 100%; 
+<br>E. coli (species) 96.69%; 
+<br>E. coli O157:H7 (strain) 12.36% with many different subtypes.
+
+After Bracken:
+<br>Enterobacteriaceae (family; 100%), of which:
+<br>E. coli (species) 98.22%; 
+<br>Other Escherichia species (fergusonii 0.24%, albertii 0.20%, marmotae 0.13%, Escherichia sp. E4742 0.11%, unclassified Escherichia 0.11%; 
+<br>Other genus (Shigella 0.51%, Klebsiella 0.20%, Salmonella 0.16%, Enterobacter 0,07%, Citrobacter 0.07%, Kluyvera 0.04%, Leclercia, 0.02%, Superficieibacter 0.02%.
+
+--------------------------------------------------
+--------------------------------------------------
+
+# 9: Pipeline overview and conclusions
 
 This pipeline has been created for analyzing microbial composition in metagenomic samples. It has been written for users with limited to no scripting or command line experience. The pipeline includes directory and conda environment setups, raw data selection, quality control, data manipulation based on intermediate results, taxonomic classification, and visualization.
 
 --------------------------------------------------
 --------------------------------------------------
 
-# 9: Considerations and future improvements
+# 10: Considerations and future improvements
 
