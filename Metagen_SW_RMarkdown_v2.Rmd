@@ -4,9 +4,9 @@ subtitle: "for analyzing Oxford Nanopore Technologies’ MinION long-read, singl
 author: "Moreno Serafino"
 date: "`r Sys.Date()`"
 output:
-  word_document: default
-  pdf_document: default
   html_document: default
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r general setup, include=FALSE}
@@ -654,7 +654,7 @@ This pipeline has been created for analyzing microbial composition in metagenomi
 <br>Minimum length filtering of 5000 bases;
 <br>No maximum length filtering.
 
-The positive control worked well, classifying 100% of reads after data manipulation and assigning 98% to E. coli after Bracken abundance estimation, with 100% to E. coli's family group Enterobacteriaceae. It does however show that thisdaar pipeline should be used at most for identification on the Genus level instead of the Species level, as species information is lost after Bracken analysis.
+The positive control worked well, classifying 100% of reads after data manipulation and assigning 98% to E. coli after Bracken abundance estimation, with 100% to E. coli's family group Enterobacteriaceae. It does however show this pipeline should be used at most for identification on the genus level instead of the species level, as species information is lost after Bracken analysis.
 
 The negative control left much to be desired. An unexpectedly large amount of reads was still assigned to species while the input should only contain data from a single species that is not represented in the reference database. 
 
