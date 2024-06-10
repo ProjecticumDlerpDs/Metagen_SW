@@ -4,9 +4,9 @@ subtitle: "for analyzing Oxford Nanopore Technologies’ MinION long-read, singl
 author: "Moreno Serafino"
 date: "`r Sys.Date()`"
 output:
-  html_document: default
-  pdf_document: default
   word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r general setup, include=FALSE}
@@ -36,8 +36,15 @@ knitr::opts_chunk$set(echo = TRUE)
 <br>  5.4: Filtering on read length
 <br><br>**Chapter 6**: Abundance estimation
 <br><br>**Chapter 7**: Visualization of microbial composition
-<br><br>**Chapter 8**: Pipeline overview and conclusions 
-<br><br>**Chapter 9**: Considerations and improvements
+<br><br>**Chapter 8**: Validation
+<br>  8.1: Positive control
+<br>  8.2: Positive control workflow
+<br>  8.3: Positive control results
+<br>  8.4: Negative control
+<br>  8.5: Negative control workflow
+<br>  8.6: Negative control results
+<br><br>**Chapter 9**: Pipeline overview and conclusions 
+<br><br>**Chapter 10**: Considerations and future improvements
 
 --------------------------------------------------
 --------------------------------------------------
@@ -515,48 +522,50 @@ A positive and a negative control will be supplied as input for this final pipel
 
 The positive control will use genomic FASTQ data from Escherichia coli O157:H7. If the input consists of genomic data only from this strain, the Kraken2 report is expected to reflect this by classifying reads only as E. coli O157:H7 strain, or more generally as the E. coli species in the case of homologous sequences shared between strains. This species and strain is chosen as it is represented in the Krona chart, and included in the 16 Gb database. Besides, E. coli has multiple identified strains, so the results of this positive control might also give an indication of the pipeline's specificity during classification.
 
+### 8.2: Positive control workflow
 
-Workflow positive control:
+8.2.1: Preparation:
+<br>8.2.1.1: NCBI https://www.ncbi.nlm.nih.gov/
+<br>8.2.1.2: select database: SRA
+<br>8.2.1.3: search "Escherichia coli O157:H7 nanopore"
+<br>8.2.1.4: choose "WGS of Escherichia coli O157" with SRX4347297
+<br>8.2.1.5: note run SRR7477813
 
-1: Preparation:
-<br>1.1: NCBI https://www.ncbi.nlm.nih.gov/
-<br>1.2: select database: SRA
-<br>1.3: search "Escherichia coli O157:H7 nanopore"
-<br>1.4: choose "WGS of Escherichia coli O157" with SRX4347297
-<br>1.5: note run SRR7477813
+8.2.2: Get data:
+<br>8.2.2.1: fastq-dump SRR7477813
+<br>8.2.2.2: mv SRR7477813.fastq control
+<br>8.2.2.3: gzip control/SRR7477813.fastq
 
-2: Get data:
-<br>2.1: fastq-dump SRR7477813
-<br>2.2: mv SRR7477813.fastq control
-<br>2.3: gzip control/SRR7477813.fastq
-
-3: Perform control:
-<br>3.1: raw fastqc
+8.2.3: Perform control:
+<br>8.2.3.1: raw fastqc
 <br>      bash scripts/fastqc_reporter.sh -I control -O analyse/fastqc/SRR7477813
-<br>3.2: raw nanoplot
+<br>8.2.3.2: raw nanoplot
 <br>      bash scripts/fastq_nanoplotter.sh -I control -O analyse/nanoplot/SRR7477813
-<br>3.3: unmodified taxonomy
-<br>      bash scripts/kraken2_classifier.sh -i control/SRR7477813.fastq.gz -O analyse/kraken2/SRR7477813 
+<br>8.2.3.3: unmodified taxonomy
+<br>      bash scripts/kraken2_classifier.sh -i control/SRR7477813.fastq.gz -O analyse/kraken2/SRR7477813
 <br>      (option 5: referentie/kraken2_db_16gb)
-<br>3.4: data manipulation
+<br>8.2.3.4: data manipulation
 <br>      conda activate nanofilt_env
 <br>        bash scripts/nanofilt_qfilter.sh -i control/SRR7477813.fastq.gz -O control
 <br>        (option: Q>10)
 <br>      conda activate meta
-<br>        porechop -i control/SRR7477813_Q10/SRR7477813_Q10.fastq.gz -o control/SRR7477813_Q10_PC.fastq.gz
+<br>        porechop -i control/SRR7477813_Q10.fastq.gz -o control/SRR7477813_Q10_PC.fastq.gz
 <br>      conda activate nanofilt_env
-<br>        bash scripts/nanofilt_lfilter.sh -i control/SRR7477813_Q10/SRR7477813_Q10_PC.fastq.gz -O control
+<br>        bash scripts/nanofilt_lfilter.sh -i control/SRR7477813_Q10_PC.fastq.gz -O control
 <br>        (option: min 5000; max none)
 <br>      conda activate meta
-<br>3.5: new kraken
-<br>      bash scripts/kraken2_classifier.sh -i control/SRR7477813_Q10/SRR7477813_Q10_PC_L5000.fastq.gz -O analyse/kraken2/SRR7477813/SRR7477813_Q10_PC_L5000
-<br>3.6: bracken
+<br>8.2.3.5: new kraken
+<br>      bash scripts/kraken2_classifier.sh -i control/SRR7477813_Q10_PC_minL5000.fastq.gz -O analyse/kraken2/SRR7477813_Q10_PC_L5000
+<br>8.2.3.6: bracken
 <br>      bash scripts/bracken_estimator.sh -i analyse/kraken2/SRR7477813_Q10_PC_L5000/SRR7477813_Q10_PC_L5000.report -O analyse/bracken/SRR7477813_Q10_PC_L5000 -d referentie/kraken2_db_16gb/
-<br>3.7: krona
-<br>      bash scripts/krona_visualizer.sh -i analyse/bracken/SRR7477813_Q10_PC_L5000/SRR7477813_Q10_PC_L5000_bracken_species.report -O analyse/krona/SRR7477813_Q10_PC_L5000
+<br>8.2.3.7: krona
+<br>      bash scripts/krona_visualizer.sh -i analyse/bracken/SRR7477813_Q10_PC_L5000/SRR7477813_Q10_PC_L5000_bracken_species.report -O analyse/krona/SRR7477813
 
+Cleanup:
+mkdir control/control_pos
+mv control/SRR* control/control_pos
 
-Positive control results:
+### 8.3: Positive control results
 
 Before data manipulation:
 <br>Classified 84.75%; 
@@ -574,15 +583,99 @@ After Bracken:
 <br>Other Escherichia species (fergusonii 0.24%, albertii 0.20%, marmotae 0.13%, Escherichia sp. E4742 0.11%, unclassified Escherichia 0.11%; 
 <br>Other genus (Shigella 0.51%, Klebsiella 0.20%, Salmonella 0.16%, Enterobacter 0,07%, Citrobacter 0.07%, Kluyvera 0.04%, Leclercia, 0.02%, Superficieibacter 0.02%.
 
+![<br>Figure 12: Krona-plot of positive control, after data manipulation as suggested in the definitive pipeline, using experimental WGS data of Escherichia coli O157.](misc/pos_krona.PNG)
+
+### 8.4: Negative control
+
+The negative control will make use of Nanopore shotgun sequencing data from Candidatus Chlorohelix allophototropha, a bacterial strain found in hot springs, that is not represented in the 16 GB reference database.
+
+### 8.5: Negative control workflow
+
+8.5.1: Preparation:
+<br>8.5.1.1: NCBI https://www.ncbi.nlm.nih.gov/
+<br>8.5.1.2: select database: SRA
+<br>8.5.1.3: search "nanopore Chlorohelix allophototropha"
+<br>8.5.1.4: choose "Shotgun genome sequencing (Nanopore) of "Ca. Chlorohelix allophototropha": single colony from subculture 19.9" with SRX20809890
+<br>8.5.1.5: note run SRR25055608
+
+8.5.2: Get data:
+<br>8.5.2.1: fastq-dump SRR25055608
+<br>8.5.2.2: mv SRR25055608.fastq control
+<br>8.5.2.3: gzip control/SRR25055608.fastq
+
+8.5.3: Perform control:
+<br>8.5.3.1: raw fastqc
+<br>      bash scripts/fastqc_reporter.sh -I control -O analyse/fastqc/SRR25055608
+<br>8.5.3.2: raw nanoplot
+<br>      bash scripts/fastq_nanoplotter.sh -I control -O analyse/nanoplot/SRR25055608
+<br>8.5.3.3: unmodified taxonomy
+<br>      bash scripts/kraken2_classifier.sh -i control/SRR25055608.fastq.gz -O analyse/kraken2/SRR25055608
+<br>      (option 5: referentie/kraken2_db_16gb)
+<br>8.5.3.4: data manipulation
+<br>      conda activate nanofilt_env
+<br>        bash scripts/nanofilt_qfilter.sh -i control/SRR25055608.fastq.gz -O control
+<br>        (option: Q>10)
+<br>      conda activate meta
+<br>        porechop -i control/SRR25055608_Q10.fastq.gz -o control/SRR25055608_Q10_PC.fastq.gz
+<br>      conda activate nanofilt_env
+<br>        bash scripts/nanofilt_lfilter.sh -i control/SRR25055608_Q10_PC.fastq.gz -O control
+<br>        (option: min 5000; max none)
+<br>      conda activate meta
+<br>8.5.3.5: new kraken
+<br>      bash scripts/kraken2_classifier.sh -i control/SRR25055608_Q10_PC_minL5000.fastq.gz -O analyse/kraken2/SRR25055608_Q10_PC_L5000
+<br>8.5.3.6: bracken
+<br>      bash scripts/bracken_estimator.sh -i analyse/kraken2/SRR25055608_Q10_PC_L5000/SRR25055608_Q10_PC_L5000.report -O analyse/bracken/SRR25055608_Q10_PC_L5000 -d referentie/kraken2_db_16gb/
+<br>8.5.3.7: krona
+<br>      bash scripts/krona_visualizer.sh -i analyse/bracken/SRR25055608_Q10_PC_L5000/SRR25055608_Q10_PC_L5000_bracken_species.report -O analyse/krona/SRR25055608
+
+Cleanup:
+mkdir control/control_neg
+mv control/SRR* control/control_neg
+
+### 8.6: Negative control results
+
+There are still reads being classified to other species in the reference database. This shows that the used parameters might not be strict enough, or that species with a low percentage of classifications should be disregarded. This is a point of further investigation. While the expectation was that none of the reads would be classified, it does not necessarily mean that all read classifications are wrong. It is still possible that the sequencing data was contaminated, just like the positive control containing few reads of other species. With this negative control, however, there is of course no one species that has by far the most reads like the E. coli in the positive control. This is discussed further in chapter 10.1.
+
+![<br>Figure 12: Krona-plot of negative control, after data manipulation as suggested in the definitive pipeline, using shotgun genome sequencing data of Ca. Chlorohelix allophototropha. Note that there are many different species in this graph, this was not expected.](misc/neg_krona.PNG)
+
+### 8.4: Negative control using nonsense data
+
+Another attempt is made to execute a negative control, this time using randomly generated nonsense data using the *nanopore_generator.sh* script. 17 reads of varying lengths and average quality scores between 10 and 13 have been randomly generated as nonsense_nanopore.fastq.gz. This file has been used as input for the pipeline as shown before. Out of 17, 12 reads passed through the filtering steps but 0 of the reads ended up being classified with Kraken2 analysis. This is something to also look into further, with a much larger nonsense input.
+
 --------------------------------------------------
 --------------------------------------------------
 
 # 9: Pipeline overview and conclusions
 
-This pipeline has been created for analyzing microbial composition in metagenomic samples. It has been written for users with limited to no scripting or command line experience. The pipeline includes directory and conda environment setups, raw data selection, quality control, data manipulation based on intermediate results, taxonomic classification, and visualization.
+This pipeline has been created for analyzing microbial composition in metagenomic samples. It has been written for users with limited to no scripting or command line experience. The pipeline includes directory and Conda environment setups, raw data selection, quality control, data manipulation based on intermediate results, taxonomic classification, visualization, and validation with positive and negative controls. With regards to the pipeline variables, the highest rate of classification using Kraken2 were as follows:
+<br>Kraken 2 reference database: 16GB (larger is better);
+<br>Porechop is used to remove adapter sequences (preferable regardless of classification percentage);
+<br>Quality filtering with Phred-scores > 10;
+<br>Minimum length filtering of 5000 bases;
+<br>No maximum length filtering.
+
+The positive control worked well, classifying 100% of reads after data manipulation and assigning 98% to E. coli after Bracken abundance estimation, with 100% to E. coli's family group Enterobacteriaceae. It does however show that thisdaar pipeline should be used at most for identification on the Genus level instead of the Species level, as species information is lost after Bracken analysis.
+
+The negative control left much to be desired. An unexpectedly large amount of reads was still assigned to species while the input should only contain data from a single species that is not represented in the reference database. 
+
 
 --------------------------------------------------
 --------------------------------------------------
 
 # 10: Considerations and future improvements
 
+### 10.1: issues with regards to negative control results
+
+The negative control showed that there are still many reads being classified while using genomic data from a species that is not represented in the reference database. This suggests that the Kraken2 analysis is not strict enough. It is recommended to try other unrepresented species as well, to check whether the chosen experimental data is not just contaminated. It would be good to also make use of the Kraken2 --confidence option which raises the minimum confidence threshold before classifying each read. Besides that, the resulting analysis could be explored more, whether there should be a minimum amount of classified reads per species, so that species with very few reads or a very low percentage of reads may be disregarded. This will require more knowledge about k-mer analysis and more testing of variables.
+
+### 10.2: exploring more taxonomy options
+
+While Kraken2 is a popular tool for classification, it was preferred to use multiple different tools and methods for taxonomic profiling of the data. That way the results could be compared. While for other steps in the pipeline different tool options have been explored, this crucial step has not yet been done for the purpose of classification and taxonomy. There are other tools such as Kaiju and Centrifuge that could be used for this purpose as well.
+
+### 10.3: human host removal
+
+There have been many attempts to remove the human reads from the SW samples. This has been attempted using tools that, in other cases, can identify human reads as 'host DNA' and remove them. The used tools are BowTie2, Minimap2 and again Kraken2 using a human genome as reference database and then selecting only the unclassified reads as output. Unfortunately none of these methods has provided a satisfying result. Eventually it was decided to leave the human samples in the data, and provide a warning for if there are many human reads in a sample, this might mean contamination of the sample. That also would mean that the sample may contain genomic material of microbes that may be residing on the human skin before or during sequencing. It is recommended to explore options in the future, and attempt to remove the human data from the Kraken2 output and recalculate percentages of all other present microbes and organisms through scripting, so that no other tools or reference databases need to be used.
+
+### 10.4: improving user experience
+
+While the pipeline should be understandable for users with little to no experience, some aspects of the pipeline are still undesirable. For example, the kraken2_classifier.sh script requires the user to enter the path to the reference database which may not be easy for everyone.
