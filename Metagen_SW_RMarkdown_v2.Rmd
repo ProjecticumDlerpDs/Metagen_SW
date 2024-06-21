@@ -45,6 +45,7 @@ knitr::opts_chunk$set(echo = TRUE)
 <br>  8.6: Negative control results
 <br><br>**Chapter 9**: Pipeline overview and conclusions 
 <br><br>**Chapter 10**: Considerations and future improvements
+<br><br>**Chapter 11**: Github References
 
 --------------------------------------------------
 --------------------------------------------------
@@ -679,3 +680,25 @@ There have been many attempts to remove the human reads from the SW samples. Thi
 ### 10.4: improving user experience
 
 While the pipeline should be understandable for users with little to no experience, some aspects of the pipeline are still undesirable. For example, the kraken2_classifier.sh script requires the user to enter the path to the reference database which may not be easy for everyone.
+
+
+--------------------------------------------------
+--------------------------------------------------
+
+# 11: Github References
+
+Maryland Bioinformatics Labs' **"Krona"**:
+<br>https://github.com/marbl/Krona
+
+Ryan Wick's **“Porechop”**:
+<br>https://github.com/rrwick/Porechop
+
+Simon Andrews' **“FastQC”**: 
+<br>https://github.com/s-andrews/FastQC
+
+Wouter de Coster's **“Chopper”**, **"NanoFilt"** and **"NanoPlot"**:
+<br>https://github.com/wdecoster/chopper
+<br>https://github.com/wdecoster/nanofilt
+<br>https://github.com/wdecoster/NanoPlot
+<br><br><br>
+
